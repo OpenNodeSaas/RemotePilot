@@ -25,7 +25,7 @@ public sealed record ConnectionTemplate
     public string SshKeyPath { get; init; } = "";
     public bool IsDefault { get; init; }
 
-    // FastRdp 平台同步扩展字段
+    // 资产同步扩展字段
     public string? RemoteTemplateId { get; init; }
     public DateTimeOffset? LastSyncedAt { get; init; }
     public Dictionary<string, string> SyncExtensions { get; init; } = new();
