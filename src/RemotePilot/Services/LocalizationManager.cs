@@ -110,7 +110,6 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Nav_Favorites"] = "⭐ 收藏列表",
         ["Nav_Recent"] = "🕘 最近使用",
         ["Nav_Groups"] = "📁 服务器分组",
-        ["Nav_FastRdpPortal"] = "🚀 90% 的用户都在偷偷用这招加速",
         ["Nav_Feedback"] = "✉ 留下您的宝贵意见",
         ["Msg_FeedbackTitle"] = "RemotePilot 意见反馈",
         ["Msg_FeedbackFallback"] = "感谢您愿意为 RemotePilot 提出宝贵建议，我们会认真阅读每一条反馈。\n\n当前电脑没有检测到可用的邮件客户端，因此未能自动打开发信窗口。\n请手动发送邮件至：\n\nremotemate@protonmail.com\n\n小提示：在此窗口按 Ctrl+C 可复制全文，粘贴到任意邮箱网页版即可发送。",
@@ -228,7 +227,6 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Diag_Advice"] = "检查建议:",
         ["Diag_AdviceDetail"] = "• 请确认服务器网络与端口（22/3389）是否开放\n• 请检查防火墙或云端安全组策略\n• 请核对账号密码或 SSH 私钥是否正确",
         ["Diag_Retry"] = "重试连接",
-        ["Diag_Relay"] = "中继加速",
 
         // 卡片
         ["Card_Owner"] = "负责人: ",
@@ -461,8 +459,6 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Dlg_ExportTitle"] = "导出服务器资产 CSV",
         ["Dlg_ExportFilter"] = "CSV 文件 (*.csv)|*.csv",
         ["Csv_ErrorIpPort"] = "服务器IP和端口缺失或无效",
-        ["Dlg_RelayTitle"] = "RemotePilot 智能中继加速推荐",
-        ["Dlg_RelayPrompt"] = "直连服务器 [{0}:{1}] 失败或不稳定？\n\n是否使用 RemotePilot 专属低延迟中继加速？",
 
         // 接口导入对话框（用户自定义接口，无需登录任何平台）
         ["Sync_Title"] = "从接口导入资产 - RemotePilot",
@@ -492,7 +488,6 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Nav_Favorites"] = "⭐ Favorites",
         ["Nav_Recent"] = "🕘 Recent",
         ["Nav_Groups"] = "📁 Groups",
-        ["Nav_FastRdpPortal"] = "🚀 90% of users are secretly using this trick to speed up",
         ["Nav_Feedback"] = "✉ Send Feedback",
         ["Msg_FeedbackTitle"] = "RemotePilot Feedback",
         ["Msg_FeedbackFallback"] = "Thank you for helping make RemotePilot better — every piece of feedback is read carefully.\n\nNo mail client was detected on this PC, so the compose window could not be opened automatically.\nPlease email us at:\n\nremotemate@protonmail.com\n\nTip: press Ctrl+C in this window to copy the text, then paste it into any webmail.",
@@ -609,7 +604,6 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Diag_Advice"] = "Suggestions:",
         ["Diag_AdviceDetail"] = "• Verify server network and ports (22/3389)\n• Check firewall or cloud security group rules\n• Verify credentials or SSH private key",
         ["Diag_Retry"] = "Retry",
-        ["Diag_Relay"] = "Relay Boost",
 
         // Cards
         ["Card_Owner"] = "Owner: ",
@@ -842,8 +836,6 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Dlg_ExportTitle"] = "Export Server Assets (CSV)",
         ["Dlg_ExportFilter"] = "CSV files (*.csv)|*.csv",
         ["Csv_ErrorIpPort"] = "Server IP and port are missing or invalid",
-        ["Dlg_RelayTitle"] = "RemotePilot Smart Relay Recommendation",
-        ["Dlg_RelayPrompt"] = "Direct connection to [{0}:{1}] failed or is unstable?\n\nUse RemotePilot dedicated low-latency relay?",
 
         // Import-from-API dialog (user-defined endpoint, no platform login)
         ["Sync_Title"] = "Import Assets from API - RemotePilot",
