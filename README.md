@@ -28,7 +28,6 @@ dotnet test tests\RemotePilot.Tests
 
 - 资产数据保存在 `%LOCALAPPDATA%\FastRdp\RemoteOps\assets.json`，备份或迁移只需复制该文件。
 - 默认不保存密码。仅当你勾选"记住密码"时才保存，且使用 Windows DPAPI（当前用户）加密，只能在同一 Windows 用户下解密。
-- 为兼容历史版本，数据目录仍沿用 `%LOCALAPPDATA%\FastRdp\RemoteOps\`，与程序名无关。
 
 ## 第三方依赖
 
@@ -46,10 +45,6 @@ dotnet test tests\RemotePilot.Tests
 ## 代码签名
 
 目前发布包未签名。计划通过 SignPath Foundation 申请免费 Windows 代码签名，详情见 [CODE_SIGNING.md](CODE_SIGNING.md)。
-
-## 赞助
-
-GitHub Sponsors 申请尚未提交（需维护者在 github.com/sponsors 申请并接通 Stripe 收款）。仓库已配置 `.github/FUNDING.yml`（`github: [OpenNodeSaas]`），通过后仓库页面将显示 Sponsor 按钮。
 
 ## 许可证
 
