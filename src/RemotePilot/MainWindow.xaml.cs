@@ -194,7 +194,6 @@ public partial class MainWindow : Window
     public const string ResNavFavorites = "Nav_Favorites";
     public const string ResNavRecent = "Nav_Recent";
     public const string ResNavGroups = "Nav_Groups";
-    public const string ResNavPortal = "Nav_FastRdpPortal";
     public const string ResNavFeedback = "Nav_Feedback";
     public const string ResBtnSearch = "Btn_Search";
     public const string ResBtnAddServer = "Btn_AddServer";
@@ -259,7 +258,6 @@ public partial class MainWindow : Window
     public const string ResDiagAdvice = "Diag_Advice";
     public const string ResDiagAdviceDetail = "Diag_AdviceDetail";
     public const string ResDiagRetry = "Diag_Retry";
-    public const string ResDiagRelay = "Diag_Relay";
     public const string ResSettingResolution = "Setting_Resolution";
     public const string ResBtnScreen14 = "Btn_Screen14";
     public const string ResBtnScreen16 = "Btn_Screen16";
@@ -803,19 +801,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void BtnShowRelayPrompt_Click(object sender, RoutedEventArgs e)
-    {
-        var target = _viewAssets.FirstOrDefault(a => a.IsSelected) ?? (GridAssets.SelectedItem as ServerAssetViewModel);
-        if (target != null)
-        {
-            ShowRelayRecommendationPrompt(target.Host, target.Port);
-        }
-        else
-        {
-            MessageBox.Show(L10n["Msg_SelectAsset"], L10n["Msg_Tip"], MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-    }
-
     private void GroupBadge_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is string grp)
@@ -1146,11 +1131,6 @@ public partial class MainWindow : Window
         MessageBox.Show(L10n["Msg_SettingsSaved"], L10n["Msg_Tip"], MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private void BtnFastRdpPortal_Click(object sender, RoutedEventArgs e)
-    {
-        OpenBrowserUrl("https://www.idazi.xyz");
-    }
-
     /// <summary>留下宝贵意见：优先拉起本机邮件客户端；没有可用客户端时把邮箱直接展示出来。</summary>
     private void BtnFeedback_Click(object sender, RoutedEventArgs e)
     {
@@ -1244,11 +1224,6 @@ public partial class MainWindow : Window
         BtnProbe.IsEnabled = true;
         TxtStatusBarInfo.Text = L10n["Status_ProbeDone"];
 
-        var offlineAsset = _viewAssets.FirstOrDefault(a => a.StatusKind == AssetStatusKind.Offline);
-        if (offlineAsset != null)
-        {
-            ShowRelayRecommendationPrompt(offlineAsset.Model.Host, offlineAsset.Model.Port);
-        }
     }
 
     private void TxtProbeInterval_TextChanged(object sender, TextChangedEventArgs e)
@@ -1402,11 +1377,6 @@ public partial class MainWindow : Window
                 TxtErrorReason.Text = L10n.Format("Msg_SshConnectFailed", ex.Message);
                 BorderConnectionErrorHint.Visibility = Visibility.Visible;
                 TxtStatusBarInfo.Text = L10n.Format("Status_ConnectFailed", ex.Message);
-                bool isAuthError = ex.Message.Contains("auth", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("credential", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("denied", StringComparison.OrdinalIgnoreCase);
-                if (!isAuthError)
-                {
-                    ShowRelayRecommendationPrompt(assetToLaunch.Host, assetToLaunch.Port);
-                }
             }
         }
         else
@@ -1452,28 +1422,7 @@ public partial class MainWindow : Window
                 TxtErrorReason.Text = L10n.Format("Msg_RdpConnectFailed", ex.Message);
                 BorderConnectionErrorHint.Visibility = Visibility.Visible;
                 TxtStatusBarInfo.Text = L10n.Format("Status_ConnectFailed", ex.Message);
-                bool isAuthError = ex.Message.Contains("auth", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("credential", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("denied", StringComparison.OrdinalIgnoreCase);
-                if (!isAuthError)
-                {
-                    ShowRelayRecommendationPrompt(assetToLaunch.Host, assetToLaunch.Port);
-                }
             }
-        }
-    }
-
-    private void ShowRelayRecommendationPrompt(string host, int port)
-    {
-        var result = MessageBox.Show(
-            L10n.Format("Dlg_RelayPrompt", host, port),
-            L10n["Dlg_RelayTitle"],
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
-
-        if (result == MessageBoxResult.Yes)
-        {
-            using var client = new FastRdpApiClient();
-            var url = client.GetRelayRecommendationUrl(host, port);
-            OpenBrowserUrl(url);
         }
     }
 
