@@ -159,7 +159,7 @@
                         <Button x:Name="BtnToggleTheme" Content="{DynamicResource {x:Static local:MainWindow.ResThemeToggle}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Padding="6,4" Click="BtnToggleTheme_Click"/>
                         <Button x:Name="BtnToggleLang" Content="{DynamicResource {x:Static local:MainWindow.ResLangToggle}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Padding="6,4" Click="BtnToggleLang_Click"/>
                     </UniformGrid>
-                    <Button x:Name="BtnFeedback" Content="{DynamicResource {x:Static local:MainWindow.ResNavFeedback}}" Style="{StaticResource ModernButtonStyle}" Margin="2,0,2,0" Padding="6,6" Click="BtnFeedback_Click" ToolTip="remotemate@protonmail.com"/>
+                    <Button x:Name="BtnFeedback" Content="{DynamicResource {x:Static local:MainWindow.ResNavFeedback}}" Style="{StaticResource ModernButtonStyle}" Margin="2,0,2,0" Padding="6,6" Click="BtnFeedback_Click" ToolTip="remotemate@protonmail.com&#10;https://github.com/OpenNodeSaas/RemotePilot"/>
                 </StackPanel>
             </Grid>
         </Border>

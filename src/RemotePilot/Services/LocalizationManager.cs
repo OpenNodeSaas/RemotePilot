@@ -116,7 +116,7 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Tip_CollapseLeftNav"] = "收起导航栏",
         ["Tip_ExpandLeftNav"] = "展开导航栏",
         ["Msg_FeedbackTitle"] = "RemotePilot 意见反馈",
-        ["Msg_FeedbackFallback"] = "感谢您愿意为 RemotePilot 提出宝贵建议，我们会认真阅读每一条反馈。\n\n当前电脑没有检测到可用的邮件客户端，因此未能自动打开发信窗口。\n请手动发送邮件至：\n\nremotemate@protonmail.com\n\n小提示：在此窗口按 Ctrl+C 可复制全文，粘贴到任意邮箱网页版即可发送。",
+        ["Msg_FeedbackFallback"] = "感谢您愿意为 RemotePilot 提出宝贵建议，我们会认真阅读每一条反馈。\n\n当前电脑没有检测到可用的邮件客户端，因此未能自动打开发信窗口。\n请手动发送邮件至：\n\nremotemate@protonmail.com\n\n开源地址：https://github.com/OpenNodeSaas/RemotePilot\n欢迎在 GitHub 提交 Issue 或参与讨论。\n\n小提示：在此窗口按 Ctrl+C 可复制全文，粘贴到任意邮箱网页版即可发送。",
 
         // 顶部与操作
         ["Search_Placeholder"] = "全局搜索：名称 / IP / 分组 / 负责人 / 备注",
@@ -523,7 +523,7 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Tip_CollapseLeftNav"] = "Collapse navigation",
         ["Tip_ExpandLeftNav"] = "Expand navigation",
         ["Msg_FeedbackTitle"] = "RemotePilot Feedback",
-        ["Msg_FeedbackFallback"] = "Thank you for helping make RemotePilot better — every piece of feedback is read carefully.\n\nNo mail client was detected on this PC, so the compose window could not be opened automatically.\nPlease email us at:\n\nremotemate@protonmail.com\n\nTip: press Ctrl+C in this window to copy the text, then paste it into any webmail.",
+        ["Msg_FeedbackFallback"] = "Thank you for helping make RemotePilot better — every piece of feedback is read carefully.\n\nNo mail client was detected on this PC, so the compose window could not be opened automatically.\nPlease email us at:\n\nremotemate@protonmail.com\n\nOpen source: https://github.com/OpenNodeSaas/RemotePilot\nFeel free to open an Issue or join the discussion on GitHub.\n\nTip: press Ctrl+C in this window to copy the text, then paste it into any webmail.",
 
         // Top command bar & actions
         ["Search_Placeholder"] = "Search name / IP / group / owner / note",
