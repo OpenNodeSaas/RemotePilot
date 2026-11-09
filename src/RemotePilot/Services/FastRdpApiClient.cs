@@ -9,11 +9,9 @@ namespace RemotePilot.Services;
 public sealed class FastRdpApiClient : IDisposable
 {
     private readonly HttpClient _httpClient;
-    private readonly string _baseUrl;
 
-    public FastRdpApiClient(string baseUrl = "https://fastrdp.xyz", HttpClient? httpClient = null)
+    public FastRdpApiClient(HttpClient? httpClient = null)
     {
-        _baseUrl = string.IsNullOrWhiteSpace(baseUrl) ? "https://fastrdp.xyz" : baseUrl.TrimEnd('/');
         _httpClient = httpClient ?? new HttpClient();
     }
 
@@ -162,14 +160,6 @@ public sealed class FastRdpApiClient : IDisposable
 
     private static string DefaultIfEmpty(string value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value;
     private static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
-
-    /// <summary>中继加速推荐页地址（Web 端只读跳转，不涉及登录）。</summary>
-    public string GetRelayRecommendationUrl(string host, int port)
-    {
-        var cleanBase = _baseUrl.TrimEnd('/');
-        var encodedHost = Uri.EscapeDataString(host ?? "");
-        return $"{cleanBase}/relay/recommend?host={encodedHost}&port={port}";
-    }
 
     public void Dispose()
     {
