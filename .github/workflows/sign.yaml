@@ -1,0 +1,60 @@
+# TEMPLATE ONLY — DO NOT RUN until SignPath Foundation approves this project.
+#
+# This workflow is intentionally disabled (`if: false` on the sign job).
+# It shows the intended release-signing flow only:
+#   1. Build on windows-latest in GitHub Actions (same as build.yml).
+#   2. Upload the unsigned build as a GitHub Actions artifact.
+#   3. Submit that artifact to SignPath for signing.
+#   4. A named human approver must approve every release in SignPath
+#      before the signed artifact is released.
+#
+# Before enabling:
+#   - Apply at https://signpath.org and wait for Foundation approval.
+#   - Create the SignPath project and confirm the exact action version,
+#     signing-policy slug, and input names in the SignPath project settings.
+#   - Set these repository secrets (never commit real values):
+#       SIGNPATH_API_TOKEN, SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG
+#   - Remove the `if: false` guard only after the above are done.
+#   - Do NOT sign locally and do NOT sign binaries built outside this repo.
+name: Sign (SignPath template — disabled)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Publish (win-x64, self-contained)
+        run: dotnet publish src/RemotePilot/RemotePilot.csproj -c Release -r win-x64 --self-contained true -o artifacts/publish
+      - name: Upload unsigned artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RemotePilot-win-x64-unsigned
+          path: artifacts/publish
+
+  sign:
+    needs: build
+    # Disabled until SignPath Foundation approves the project and secrets are set.
+    if: false
+    runs-on: windows-latest
+    steps:
+      - name: Submit to SignPath for signing
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          # TODO (after approval): confirm the signing-policy slug and
+          # artifact reference in the SignPath project settings before enabling.
+          signing-policy-slug: release-signing
+          github-artifact-id: RemotePilot-win-x64-unsigned
+          wait-for-completion: true
