@@ -76,7 +76,6 @@
 
                         <Separator Background="{DynamicResource BorderBrush}" Margin="8,16"/>
 
-                        <Button x:Name="NavBtnPortal" Content="{DynamicResource {x:Static local:MainWindow.ResNavPortal}}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="BtnFastRdpPortal_Click"/>
                     </StackPanel>
                 </ScrollViewer>
 
@@ -346,9 +345,6 @@
 
             <!-- 底部状态栏 -->
             <StatusBar Grid.Row="4" Background="{DynamicResource SidebarBackground}" Foreground="{DynamicResource AppForeground}" Padding="8,4">
-                <StatusBarItem DockPanel.Dock="Right">
-                    <TextBlock>powered by <Hyperlink Foreground="{DynamicResource AppForeground}" ToolTip="https://www.idazi.xyz" Click="BtnFastRdpPortal_Click">www.idazi.xyz</Hyperlink></TextBlock>
-                </StatusBarItem>
                 <StatusBarItem>
                     <TextBlock x:Name="TxtStatusBarInfo" Text="{DynamicResource {x:Static local:MainWindow.ResStatusReady}}"/>
                 </StatusBarItem>
@@ -462,9 +458,8 @@
                                 <TextBlock x:Name="TxtErrorReason" Text="{DynamicResource {x:Static local:MainWindow.ResDiagReason}}" TextWrapping="Wrap" FontSize="12" Foreground="#3C4043" Margin="0,0,0,6"/>
                                 <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResDiagAdvice}}" FontWeight="SemiBold" FontSize="11" Foreground="#202124"/>
                                 <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResDiagAdviceDetail}}" FontSize="11" Foreground="#5F6368" TextWrapping="Wrap" Margin="0,2,0,8"/>
-                                <UniformGrid Columns="2">
+                                <UniformGrid Columns="1">
                                     <Button x:Name="BtnRetryConnection" Content="{DynamicResource {x:Static local:MainWindow.ResDiagRetry}}" Style="{StaticResource ModernButtonStyle}" Margin="0,0,4,0" Click="BtnRetryConnection_Click"/>
-                                    <Button x:Name="BtnShowRelayPrompt" Content="{DynamicResource {x:Static local:MainWindow.ResDiagRelay}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0,0,0" Click="BtnShowRelayPrompt_Click"/>
                                 </UniformGrid>
                             </StackPanel>
                         </Border>
