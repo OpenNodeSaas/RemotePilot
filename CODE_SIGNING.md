@@ -17,7 +17,7 @@ qualifying open-source projects).
 - Signing happens **only in GitHub Actions**, from source code in this
   repository. Binaries are never signed locally and never signed from
   builds outside this repository.
-- The signing workflow is `.github/workflows/sign.yml`. It is disabled
+- The signing workflow is `.github/workflows/sign.yaml`. It is disabled
   (`if: false`) until SignPath Foundation approves the project and the
   required repository secrets are set.
 - **Every release requires manual approval** by a named human approver in
