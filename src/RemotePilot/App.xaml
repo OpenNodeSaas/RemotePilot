@@ -1,0 +1,174 @@
+﻿<Application x:Class="RemotePilot.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:RemotePilot"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <!-- 默认颜色与笔刷回退值 (现代暗黑/高对比度浅色) -->
+        <SolidColorBrush x:Key="AppBackground" Color="#F8F9FA"/>
+        <SolidColorBrush x:Key="SurfaceBackground" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="SidebarBackground" Color="#F0F2F5"/>
+        <SolidColorBrush x:Key="ToolbarBackground" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="AppForeground" Color="#1F2328"/>
+        <SolidColorBrush x:Key="MutedForeground" Color="#656D76"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#D0D7DE"/>
+        <SolidColorBrush x:Key="HoverBackground" Color="#EAECEF"/>
+        <SolidColorBrush x:Key="SelectedBackground" Color="#DBEAFE"/>
+        <SolidColorBrush x:Key="Primary" Color="#0969DA"/>
+        <SolidColorBrush x:Key="PrimaryHover" Color="#0854B0"/>
+        <SolidColorBrush x:Key="Success" Color="#1A7F37"/>
+        <SolidColorBrush x:Key="Warning" Color="#9A6700"/>
+        <SolidColorBrush x:Key="Danger" Color="#CF222E"/>
+        <SolidColorBrush x:Key="BadgeBackground" Color="#EFF1F3"/>
+
+        <!-- 全局默认字号提升至 14px - 15px 与 DataGrid 统一样式 -->
+        <Style TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        <Style TargetType="{x:Type TextBox}">
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        <Style TargetType="{x:Type ComboBox}">
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        <Style TargetType="{x:Type DataGrid}">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="RowHeight" Value="46"/>
+            <Setter Property="ColumnHeaderHeight" Value="40"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AppForeground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="RowBackground" Value="{DynamicResource SurfaceBackground}"/>
+            <Setter Property="AlternatingRowBackground" Value="{DynamicResource DataGridRowAlternate}"/>
+        </Style>
+        <Style TargetType="{x:Type DataGridColumnHeader}">
+            <Setter Property="Background" Value="{DynamicResource DataGridHeader}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AppForeground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        <Style TargetType="{x:Type DataGridCell}">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type DataGridCell}">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" SnapsToDevicePixels="True">
+                            <ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SelectedBackground}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AppForeground}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 兼容键 -->
+        <SolidColorBrush x:Key="Background" Color="#F8F9FA"/>
+        <SolidColorBrush x:Key="Foreground" Color="#1F2328"/>
+        <Color x:Key="PrimaryColor">#0969DA</Color>
+
+        <!-- 扁平化圆角按钮样式 -->
+        <Style x:Key="ModernButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AppForeground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource HoverBackground}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+            <Setter Property="Background" Value="{DynamicResource Primary}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Primary}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 扁平化输入框样式 -->
+        <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AppForeground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="2,0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource Primary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Application.Resources>
+</Application>
