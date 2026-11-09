@@ -1,0 +1,115 @@
+<Window x:Class="RemotePilot.TemplateEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:RemotePilot"
+        Title="{DynamicResource {x:Static local:TemplateEditDialog.ResDlgTitle}}" 
+        Height="500" Width="480" 
+        WindowStartupLocation="CenterOwner" 
+        ResizeMode="NoResize">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResDlgHeader}}" 
+                   FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResFldName}}" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TxtName" Grid.Column="1" Padding="4"/>
+                </Grid>
+
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResFldProtocol}}" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="CmbProtocol" Grid.Column="1" SelectedIndex="0" SelectionChanged="CmbProtocol_SelectionChanged">
+                        <ComboBoxItem Content="rdp"/>
+                        <ComboBoxItem Content="ssh"/>
+                    </ComboBox>
+                </Grid>
+
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResFldPort}}" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TxtPort" Grid.Column="1" Text="3389" Padding="4"/>
+                </Grid>
+
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResFldUsername}}" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TxtUsername" Grid.Column="1" Padding="4"/>
+                </Grid>
+
+                <StackPanel x:Name="PanelRdpSettings">
+                    <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResRdpSettings}}" 
+                               FontWeight="SemiBold" Margin="0,12,0,8"/>
+
+                    <Grid Margin="0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResFldResolution}}" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TxtRdpWidth" Grid.Column="1" Text="1600" Padding="4"/>
+                        <TextBlock Text="x" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TxtRdpHeight" Grid.Column="3" Text="900" Padding="4"/>
+                    </Grid>
+
+                    <Grid Margin="0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResFldColorDepth}}" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="CmbColorDepth" Grid.Column="1" SelectedIndex="2">
+                            <ComboBoxItem Content="16" Tag="16"/>
+                            <ComboBoxItem Content="24" Tag="24"/>
+                            <ComboBoxItem Content="32" Tag="32"/>
+                        </ComboBox>
+                    </Grid>
+
+                    <Grid Margin="0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResFldGateway}}" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TxtRdpGateway" Grid.Column="1" Padding="4"/>
+                    </Grid>
+
+                    <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResRdpRedirect}}" 
+                               FontWeight="SemiBold" Margin="0,12,0,8"/>
+                    <WrapPanel Margin="0,2">
+                        <CheckBox x:Name="ChkRedirectDrives" Content="{DynamicResource {x:Static local:TemplateEditDialog.ResDriveMap}}" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="ChkRedirectAudio" Content="{DynamicResource {x:Static local:TemplateEditDialog.ResAudio}}" Margin="0,0,10,0" IsChecked="True"/>
+                        <CheckBox x:Name="ChkRedirectClipboard" Content="{DynamicResource {x:Static local:TemplateEditDialog.ResClipboard}}" Margin="0,0,10,0"/>
+                    </WrapPanel>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="{DynamicResource {x:Static local:TemplateEditDialog.ResBtnOk}}" Width="80" Height="28" Margin="0,0,8,0" IsDefault="True" Click="BtnOk_Click"/>
+            <Button Content="{DynamicResource {x:Static local:TemplateEditDialog.ResBtnCancel}}" Width="80" Height="28" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
