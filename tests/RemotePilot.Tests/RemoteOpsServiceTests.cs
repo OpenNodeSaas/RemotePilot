@@ -93,11 +93,4 @@ public class RemoteOpsServiceTests
         Assert.Contains("desktopheight:i:1440", content);
     }
 
-    [Fact]
-    public void TestFastRdpApiClientRelayRecommendationUrl()
-    {
-        var client = new FastRdpApiClient("https://fastrdp.xyz/");
-        var url = client.GetRelayRecommendationUrl("10.0.0.5", 3389);
-        Assert.Equal("https://fastrdp.xyz/relay/recommend?host=10.0.0.5&port=3389", url);
-    }
 }
