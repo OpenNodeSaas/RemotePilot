@@ -99,7 +99,7 @@ public static class RdpLauncher
     public static string CreateTempRdpFile(ServerAsset asset, ConnectionTemplate? template = null, string? password = null)
     {
         var content = GenerateRdpContent(asset, template, password);
-        var tempFilePath = Path.Combine(Path.GetTempPath(), $"fastrdp_{Guid.NewGuid():N}.rdp");
+        var tempFilePath = Path.Combine(Path.GetTempPath(), $"remotepilot_{Guid.NewGuid():N}.rdp");
         File.WriteAllText(tempFilePath, content, Encoding.UTF8);
         return tempFilePath;
     }
