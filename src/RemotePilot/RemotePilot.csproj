@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- 品牌：RemotePilot -->
+    <AssemblyName>RemotePilot</AssemblyName>
+    <RootNamespace>RemotePilot</RootNamespace>
+    <Product>RemotePilot</Product>
+    <AssemblyTitle>RemotePilot</AssemblyTitle>
+    <Description>RemotePilot 远程运维管理中心</Description>
+    <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="SSH.NET" Version="2026.0.0" />
+    <PackageReference Include="VirtualTerminal.SecureShell" Version="1.10.0" />
+    <PackageReference Include="VirtualTerminal.WPF" Version="1.10.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Assets\logo.png" />
+    <Resource Include="Assets\logo.png" />
+  </ItemGroup>
+
+</Project>
