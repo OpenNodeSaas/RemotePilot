@@ -17,6 +17,23 @@ public sealed record CsvImportError
     public string Message { get; init; } = "";
 }
 
+/// <summary>导出字段勾选集合。默认全部字段导出，密码默认不导出。</summary>
+public sealed record ExportFieldSelection
+{
+    public bool Group { get; init; } = true;
+    public bool Name { get; init; } = true;
+    public bool IpPort { get; init; } = true;
+    public bool Username { get; init; } = true;
+    public bool Password { get; init; } = false;
+    public bool Expires { get; init; } = true;
+    public bool Owner { get; init; } = true;
+    public bool Note1 { get; init; } = true;
+    public bool Note2 { get; init; } = true;
+    public bool Note3 { get; init; } = true;
+    public bool Protocol { get; init; } = true;
+    public bool Port { get; init; } = true;
+}
+
 public static class AssetCsvService
 {
     private static readonly string[] DangerousFormulaPrefixes = ["=", "+", "-", "@", "\t", "\r", "\n"];
@@ -110,29 +127,45 @@ public static class AssetCsvService
         return new CsvImportResult { Assets = assets, Errors = errors };
     }
 
-    public static string ExportCsv(IEnumerable<ServerAsset> assets)
+    public static string ExportCsv(IEnumerable<ServerAsset> assets) => ExportCsv(assets, new ExportFieldSelection());
+
+    public static string ExportCsv(IEnumerable<ServerAsset> assets, ExportFieldSelection fields)
     {
+        // 按固定顺序构建列，仅包含被勾选的字段；密码列紧跟“账号”之后
+        var columns = new List<(string Header, Func<ServerAsset, string> Value)>();
+
+        if (fields.Group) columns.Add(("分组", a => SanitizeForCsv(a.Group)));
+        if (fields.Name) columns.Add(("服务器名称", a => SanitizeForCsv(a.Name)));
+        if (fields.IpPort) columns.Add(("服务器IP和端口", a => SanitizeForCsv(FormatIpPort(a.Host, a.Port))));
+        if (fields.Username) columns.Add(("账号", a => SanitizeForCsv(a.Username)));
+        if (fields.Password) columns.Add(("密码", a => SanitizeForCsv(GetPlainPassword(a))));
+        if (fields.Expires) columns.Add(("到期时间", a => SanitizeForCsv(a.ExpiresOn?.ToString("yyyy-MM-dd") ?? "")));
+        if (fields.Owner) columns.Add(("负责人", a => SanitizeForCsv(a.Owner)));
+        if (fields.Note1) columns.Add(("其他备注1", a => SanitizeForCsv(a.CustomNote1)));
+        if (fields.Note2) columns.Add(("其他备注2", a => SanitizeForCsv(a.CustomNote2)));
+        if (fields.Note3) columns.Add(("其他备注3", a => SanitizeForCsv(a.CustomNote3)));
+        if (fields.Protocol) columns.Add(("协议", a => SanitizeForCsv(a.Protocol)));
+        if (fields.Port) columns.Add(("端口", a => SanitizeForCsv(a.Port.ToString())));
+
         var sb = new StringBuilder();
-        sb.AppendLine("分组,服务器名称,服务器IP和端口,账号,到期时间,负责人,其他备注1,其他备注2,其他备注3,协议,端口");
+        sb.AppendLine(string.Join(",", columns.Select(c => c.Header)));
 
         foreach (var asset in assets)
         {
-            var group = SanitizeForCsv(asset.Group);
-            var name = SanitizeForCsv(asset.Name);
-            var ipPort = SanitizeForCsv(FormatIpPort(asset.Host, asset.Port));
-            var username = SanitizeForCsv(asset.Username);
-            var expires = SanitizeForCsv(asset.ExpiresOn?.ToString("yyyy-MM-dd") ?? "");
-            var owner = SanitizeForCsv(asset.Owner);
-            var note1 = SanitizeForCsv(asset.CustomNote1);
-            var note2 = SanitizeForCsv(asset.CustomNote2);
-            var note3 = SanitizeForCsv(asset.CustomNote3);
-            var protocol = SanitizeForCsv(asset.Protocol);
-            var portStr = SanitizeForCsv(asset.Port.ToString());
-
-            sb.AppendLine($"{group},{name},{ipPort},{username},{expires},{owner},{note1},{note2},{note3},{protocol},{portStr}");
+            sb.AppendLine(string.Join(",", columns.Select(c => c.Value(asset))));
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>取导出用明文密码：优先内存明文，其次尝试解密本机密文，均无则为空。</summary>
+    private static string GetPlainPassword(ServerAsset asset)
+    {
+        if (!string.IsNullOrEmpty(asset.Password))
+        {
+            return asset.Password;
+        }
+        return CredentialProtector.Unprotect(asset.EncryptedPassword) ?? "";
     }
 
     /// <summary>生成给客户自行编辑的标准导入模板（表头 + 一行示例）。</summary>

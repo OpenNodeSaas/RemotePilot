@@ -5,12 +5,15 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using RemotePilot.Models;
 using RemotePilot.Services;
+using RemotePilot.ViewModels;
 using Microsoft.Win32;
 
 namespace RemotePilot;
@@ -185,6 +188,15 @@ public partial class MainWindow : Window
     private bool _isWorkspaceFullscreen;
     private bool _detailsWasVisibleBeforeFullscreen;
     private WindowState _windowStateBeforeFullscreen = WindowState.Normal;
+    /// <summary>左侧导航是否折叠为图标条（持久化）。</summary>
+    private bool _leftNavCollapsed;
+    private const double LeftNavExpandedWidth = 220;
+    private const double LeftNavCollapsedWidth = 56;
+    /// <summary>抑制表头三态/计数联动，避免程序化改选时事件递归。</summary>
+    private bool _suppressSelectAllSync;
+
+    /// <summary>已就认证失败弹过一次凭据补录的资产，避免同一会话反复弹窗（每个资产仅提示一次）。</summary>
+    private readonly HashSet<Guid> _authRetryPrompted = [];
 
     private enum NavMode { Assets, Sessions, Favorites, Recent, Groups }
 
@@ -195,11 +207,14 @@ public partial class MainWindow : Window
     public const string ResNavRecent = "Nav_Recent";
     public const string ResNavGroups = "Nav_Groups";
     public const string ResNavFeedback = "Nav_Feedback";
+    public const string ResBtnToggleLeftNav = "Btn_ToggleLeftNav";
+    public const string ResBtnToggleLeftNavExpand = "Btn_ToggleLeftNavExpand";
     public const string ResBtnSearch = "Btn_Search";
     public const string ResBtnAddServer = "Btn_AddServer";
     public const string ResBtnImport = "Btn_Import";
     public const string ResBtnImportTemplate = "Btn_ImportTemplate";
     public const string ResBtnExportSelected = "Btn_ExportSelected";
+    public const string ResBtnInvertSelect = "Btn_InvertSelect";
     public const string ResBtnDelete = "Btn_Delete";
     public const string ResBtnOpen = "Btn_Open";
     public const string ResBtnShowAll = "Btn_ShowAll";
@@ -216,6 +231,7 @@ public partial class MainWindow : Window
     public const string ResBtnRemove = "Btn_Remove";
     public const string ResBtnQuickConnect = "Btn_QuickConnect";
     public const string ResBtnExpiryBanner = "Btn_ExpiryBanner";
+    public const string ResBtnBatchProbe = "Btn_BatchProbe";
     public const string ResTipFavorite = "Tip_Favorite";
     public const string ResSettingWindowMode = "Setting_WindowMode";
     public const string ResSettingModeNormal = "Setting_ModeNormal";
@@ -245,6 +261,13 @@ public partial class MainWindow : Window
     public const string ResInspOwner = "Insp_Owner";
     public const string ResInspProtocol = "Insp_Protocol";
     public const string ResInspUsername = "Insp_Username";
+    public const string ResInspPassword = "Insp_Password";
+    public const string ResCredStateSaved = "Cred_StateSaved";
+    public const string ResCredStateNone = "Cred_StateNone";
+    public const string ResCredSessionOnly = "Cred_SessionOnly";
+    public const string ResCredLongTerm = "Cred_LongTerm";
+    public const string ResCredHint = "Cred_Hint";
+    public const string ResBtnClearCredential = "Btn_ClearCredential";
     public const string ResInspExpiresOn = "Insp_ExpiresOn";
     public const string ResInspNote1 = "Insp_Note1";
     public const string ResInspNote2 = "Insp_Note2";
@@ -295,6 +318,7 @@ public partial class MainWindow : Window
             // 状态文案、分组默认名与分组徽章都依赖当前语言，切换后重算一次
             foreach (var vm in _allAssets) vm.NotifyLanguageChanged();
             ApplyFilter();
+            BtnToggleLeftNav.ToolTip = L10n[_leftNavCollapsed ? "Tip_ExpandLeftNav" : "Tip_CollapseLeftNav"];
         };
 
         LoadAssetsFromStore();
@@ -336,6 +360,7 @@ public partial class MainWindow : Window
         };
 
         SessionWorkspace.RequestFullscreenToggle += ToggleWorkspaceFullscreen;
+        SessionWorkspace.SessionConnectFailed += OnSessionConnectFailed;
     }
 
     /// <summary>全屏只保留会话工作台：左侧导航、顶部三栏、右侧详情面板全部隐藏，退出时精确恢复原始状态。</summary>
@@ -371,8 +396,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            ColLeftNav.Width = new GridLength(220);
-            BorderLeftNav.Visibility = Visibility.Visible;
+            // 依据持久化的折叠状态恢复左侧导航（宽度 + 图标/文字可见性），不要硬编码 220
+            ApplyLeftNavState(_leftNavCollapsed);
             RowTopCommand.Height = new GridLength(56);
             RowTopSettings.Height = GridLength.Auto;
             RowTopGroup.Height = GridLength.Auto;
@@ -448,6 +473,79 @@ public partial class MainWindow : Window
         {
             SetDetailsPanelCollapsed(false);
         }
+    }
+
+    /// <summary>切换左侧导航折叠状态：更新布局并持久化。</summary>
+    private void BtnToggleLeftNav_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyLeftNavState(!_leftNavCollapsed);
+        PersistLeftNavCollapsed(_leftNavCollapsed);
+    }
+
+    /// <summary>收起态下鼠标进入导航栏临时展开（不改变持久化状态），离开后恢复。</summary>
+    private void BorderLeftNav_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (_isWorkspaceFullscreen || !_leftNavCollapsed) return;
+        ApplyLeftNavVisual(false);
+        ColLeftNav.Width = new GridLength(LeftNavExpandedWidth);
+    }
+
+    private void BorderLeftNav_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (_isWorkspaceFullscreen || !_leftNavCollapsed) return;
+        ApplyLeftNavVisual(true);
+        ColLeftNav.Width = new GridLength(LeftNavCollapsedWidth);
+    }
+
+    /// <summary>统一应用左侧导航状态：宽度、图标/文字可见性与折叠按钮外观。</summary>
+    private void ApplyLeftNavState(bool collapsed)
+    {
+        _leftNavCollapsed = collapsed;
+        ApplyLeftNavVisual(collapsed);
+        ColLeftNav.Width = new GridLength(collapsed ? LeftNavCollapsedWidth : LeftNavExpandedWidth);
+        BorderLeftNav.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>仅切换导航栏内部元素的可见性与内外边距（不涉及列宽），供折叠/悬停临时展开复用。</summary>
+    private void ApplyLeftNavVisual(bool collapsed)
+    {
+        var textVis = collapsed ? Visibility.Collapsed : Visibility.Visible;
+
+        PanelLogoRow.Visibility = textVis;
+        PanelLogoText.Visibility = textVis;
+        PanelNavBottom.Visibility = textVis;
+
+        TxtNavAssetsLabel.Visibility = textVis;
+        TxtNavSessionsLabel.Visibility = textVis;
+        TxtNavFavoritesLabel.Visibility = textVis;
+        TxtNavRecentLabel.Visibility = textVis;
+        TxtNavGroupsLabel.Visibility = textVis;
+        TxtNavGroupsChevron.Visibility = textVis;
+
+        if (collapsed) PanelNavGroups.Visibility = Visibility.Collapsed;
+
+        var align = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+        var padding = collapsed ? new Thickness(0, 14, 0, 14) : new Thickness(14, 14, 14, 14);
+        foreach (var btn in new[] { NavBtnAssets, NavBtnSessions, NavBtnFavorites, NavBtnRecent })
+        {
+            btn.HorizontalContentAlignment = align;
+            btn.Padding = padding;
+        }
+        // 分组按钮展开态需要 Stretch 以便箭头靠右对齐
+        NavBtnGroups.HorizontalContentAlignment = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+        NavBtnGroups.Padding = padding;
+
+        TxtLeftNavGlyphCollapse.Visibility = textVis;
+        TxtLeftNavGlyphExpand.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+        BtnToggleLeftNav.HorizontalAlignment = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Right;
+        BtnToggleLeftNav.ToolTip = L10n[collapsed ? "Tip_ExpandLeftNav" : "Tip_CollapseLeftNav"];
+    }
+
+    /// <summary>把折叠状态写入本地存储（保留其余字段）。</summary>
+    private void PersistLeftNavCollapsed(bool collapsed)
+    {
+        var data = _assetStore.Load();
+        _assetStore.Save(data with { IsLeftNavCollapsed = collapsed });
     }
 
     private void ShowAssetsArea(bool gridView)
@@ -608,10 +706,62 @@ public partial class MainWindow : Window
                 vm.TemplateName = template?.Name ?? "-";
             }
             
-            _allAssets.Add(vm);
+            RegisterAsset(vm);
         }
 
         ApplyFilter();
+
+        // 恢复上次的左侧导航折叠状态
+        ApplyLeftNavState(data.IsLeftNavCollapsed);
+    }
+
+    /// <summary>把资产加入列表并订阅其选中状态变化，用于实时刷新计数与表头三态。</summary>
+    private void RegisterAsset(ServerAssetViewModel vm)
+    {
+        vm.PropertyChanged -= OnAssetSelectionChanged; // 防止重复订阅
+        vm.PropertyChanged += OnAssetSelectionChanged;
+        _allAssets.Add(vm);
+    }
+
+    private void OnAssetSelectionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_suppressSelectAllSync) return;
+        if (e.PropertyName == nameof(ServerAssetViewModel.IsSelected))
+        {
+            UpdateSelectionSummary();
+        }
+    }
+
+    /// <summary>刷新「已选 N 台」文本并同步表头三态。</summary>
+    private void UpdateSelectionSummary()
+    {
+        int selected = _viewAssets.Count(a => a.IsSelected);
+        TxtSelectedCount.Text = L10n.Format("Status_SelectedCount", selected);
+
+        var chk = GetSelectAllHeaderCheckBox();
+        if (chk == null) return;
+
+        int total = _viewAssets.Count;
+        _suppressSelectAllSync = true;
+        try
+        {
+            chk.IsChecked = (total == 0 || selected == 0) ? false
+                : (selected == total ? true : null);
+        }
+        finally
+        {
+            _suppressSelectAllSync = false;
+        }
+    }
+
+    /// <summary>从 DataGrid 列头取三态复选框（列头 x:Name 无法在代码后置直接访问）。</summary>
+    private CheckBox? GetSelectAllHeaderCheckBox()
+    {
+        foreach (var col in GridAssets.Columns)
+        {
+            if (col.Header is CheckBox chk) return chk;
+        }
+        return null;
     }
 
     private void SaveAssetsToStore()
@@ -663,7 +813,16 @@ public partial class MainWindow : Window
             _viewAssets.Add(item);
         }
 
+        // 筛选切换后重置所有勾选，避免残留选中状态
+        _suppressSelectAllSync = true;
+        foreach (var a in _allAssets)
+        {
+            a.IsSelected = false;
+        }
+        _suppressSelectAllSync = false;
+
         RefreshGroupBadges();
+        UpdateSelectionSummary();
 
         TxtStatusBarInfo.Text = _navMode switch
         {
@@ -679,15 +838,19 @@ public partial class MainWindow : Window
         PanelGroupBadges.Children.Clear();
 
         // 检查临期或已过期资产数量
-        int expiryCount = _allAssets.Count(a => a.IsExpiredOrNear);
-        if (expiryCount > 0)
+        var expiring = _allAssets.Where(a => a.IsExpiredOrNear).ToList();
+        if (expiring.Count > 0)
         {
             BtnExpirySummaryBanner.Visibility = Visibility.Visible;
-            BtnExpirySummaryBanner.Content = L10n.Format("Status_ExpiryBanner", expiryCount);
+            BtnExpirySummaryBanner.Content = L10n.Format("Status_ExpiryBanner", expiring.Count);
+            // 悬停列出「名称 (IP:Port) 到期日」
+            BtnExpirySummaryBanner.ToolTip = string.Join("\n", expiring.Select(a =>
+                L10n.Format("Tip_ExpiryBannerItem", a.Name, a.IpPortDisplay, a.ExpiresOnDisplay)));
         }
         else
         {
             BtnExpirySummaryBanner.Visibility = Visibility.Collapsed;
+            BtnExpirySummaryBanner.ToolTip = null;
         }
 
         var primary = (SolidColorBrush)Application.Current.Resources["Primary"];
@@ -784,6 +947,16 @@ public partial class MainWindow : Window
         {
             _viewAssets.Add(item);
         }
+
+        // 过滤后重置勾选，保持表头三态与计数一致
+        _suppressSelectAllSync = true;
+        foreach (var a in _allAssets)
+        {
+            a.IsSelected = false;
+        }
+        _suppressSelectAllSync = false;
+        UpdateSelectionSummary();
+
         TxtStatusBarInfo.Text = L10n.Format("Status_ExpiryFilter", _viewAssets.Count);
     }
 
@@ -832,13 +1005,79 @@ public partial class MainWindow : Window
         ApplyFilter();
     }
 
-    private void BtnSelectAllToggle_Click(object sender, RoutedEventArgs e)
+    /// <summary>表头三态复选框：全选/取消全选当前可见行。</summary>
+    private void ChkSelectAllHeader_Click(object sender, RoutedEventArgs e)
     {
-        bool targetState = !_viewAssets.All(a => a.IsSelected);
+        if (_suppressSelectAllSync) return;
+        bool allSelected = _viewAssets.Count > 0 && _viewAssets.All(a => a.IsSelected);
         foreach (var vm in _viewAssets)
         {
-            vm.IsSelected = targetState;
+            vm.IsSelected = !allSelected;
         }
+        UpdateSelectionSummary();
+    }
+
+    /// <summary>反选当前可见行。</summary>
+    private void BtnInvertSelect_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var vm in _viewAssets)
+        {
+            vm.IsSelected = !vm.IsSelected;
+        }
+        UpdateSelectionSummary();
+    }
+
+    /// <summary>单击行即选中：命中测试交互控件/双击时跳过，普通点击则单选当前行。</summary>
+    private void GridAssets_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject src) return;
+        if (IsInteractiveElement(src)) return; // 点击行内交互控件，交给控件自身处理
+        if (e.ClickCount == 2) return;         // 双击交给连接逻辑
+
+        var row = FindAncestorRow(src);
+        if (row?.DataContext is not ServerAssetViewModel vm) return;
+
+        bool additive = (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0;
+        if (!additive)
+        {
+            foreach (var other in _viewAssets)
+            {
+                if (!ReferenceEquals(other, vm))
+                {
+                    other.IsSelected = false;
+                }
+            }
+            GridAssets.SelectedItem = vm;
+        }
+        vm.IsSelected = true;
+        UpdateSelectionSummary();
+    }
+
+    /// <summary>命中测试：e.OriginalSource 是否落在行内的交互控件（Button/CheckBox/ComboBox/TextBox/超链接）上。</summary>
+    private static bool IsInteractiveElement(DependencyObject source)
+    {
+        var cursor = source;
+        while (cursor != null && cursor is not DataGridRow)
+        {
+            if (cursor is ButtonBase || cursor is TextBox || cursor is ComboBox
+                || cursor is System.Windows.Documents.Hyperlink)
+            {
+                return true;
+            }
+            cursor = VisualTreeHelper.GetParent(cursor);
+        }
+        return false;
+    }
+
+    /// <summary>从命中元素向上查找所属 DataGridRow。</summary>
+    private static DataGridRow? FindAncestorRow(DependencyObject source)
+    {
+        var cursor = source;
+        while (cursor != null && cursor is not DataGridRow)
+        {
+            cursor = VisualTreeHelper.GetParent(cursor);
+        }
+        return cursor as DataGridRow;
     }
 
     private void BtnAddServer_Click(object sender, RoutedEventArgs e)
@@ -849,7 +1088,7 @@ public partial class MainWindow : Window
             var newModel = ApplyRememberPassword(dlg.Asset, dlg.RememberPassword);
 
             var vm = new ServerAssetViewModel(newModel);
-            _allAssets.Add(vm);
+            RegisterAsset(vm);
             SaveAssetsToStore();
             ApplyFilter();
         }
@@ -926,7 +1165,7 @@ public partial class MainWindow : Window
     {
         if (sender is Button btn && btn.Tag is ServerAssetViewModel vm)
         {
-            var result = MessageBox.Show(L10n.Format("Msg_ConfirmDelete", vm.Name), L10n["Msg_DeleteTitle"], MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var result = MessageBox.Show(L10n.Format("Msg_ConfirmDelete", vm.Name, vm.IpPortDisplay), L10n["Msg_DeleteTitle"], MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result == MessageBoxResult.Yes)
             {
                 _allAssets.Remove(vm);
@@ -945,7 +1184,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        var result = MessageBox.Show(L10n.Format("Msg_ConfirmBatchDelete", selected.Count), L10n["Msg_BatchDeleteTitle"], MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        // 附带待删清单摘要（名称 + IP，最多列出前 10 条，超出用省略号）
+        const int maxList = 10;
+        var lines = selected.Take(maxList)
+            .Select(a => $"• {a.Name} ({a.IpPortDisplay})")
+            .ToList();
+        if (selected.Count > maxList)
+        {
+            lines.Add(L10n.Format("Msg_DeleteListMore", selected.Count - maxList));
+        }
+        string listText = string.Join("\n", lines);
+
+        var result = MessageBox.Show(L10n.Format("Msg_ConfirmBatchDelete", selected.Count, listText), L10n["Msg_BatchDeleteTitle"], MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (result == MessageBoxResult.Yes)
         {
             foreach (var item in selected)
@@ -994,7 +1244,7 @@ public partial class MainWindow : Window
                 {
                     model = asset with { EncryptedPassword = CredentialProtector.Protect(asset.Password) };
                 }
-                _allAssets.Add(new ServerAssetViewModel(model));
+                RegisterAsset(new ServerAssetViewModel(model));
                 added++;
             }
 
@@ -1057,6 +1307,24 @@ public partial class MainWindow : Window
             return;
         }
 
+        // 弹出字段选择对话框；用户取消则不导出
+        var fieldsDlg = new ExportFieldsDialog { Owner = this };
+        if (fieldsDlg.ShowDialog() != true)
+        {
+            return;
+        }
+        var fields = fieldsDlg.SelectedFields;
+
+        // 勾选密码列时，先做明文泄露风险确认
+        if (fields.Password)
+        {
+            var risk = MessageBox.Show(L10n["ExpFld_RiskBody"], L10n["ExpFld_RiskTitle"], MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (risk != MessageBoxResult.Yes)
+            {
+                return;
+            }
+        }
+
         var dlg = new SaveFileDialog
         {
             Title = L10n["Dlg_ExportTitle"],
@@ -1068,9 +1336,14 @@ public partial class MainWindow : Window
         {
             try
             {
-                var csv = AssetCsvService.ExportCsv(selected);
+                var csv = AssetCsvService.ExportCsv(selected, fields);
                 File.WriteAllText(dlg.FileName, csv, System.Text.Encoding.UTF8);
-                MessageBox.Show(L10n.Format("Msg_ExportDone", selected.Count, dlg.FileName), L10n["Msg_ExportDoneTitle"], MessageBoxButton.OK, MessageBoxImage.Information);
+                var msg = L10n.Format("Msg_ExportDone", selected.Count, dlg.FileName);
+                if (!fields.Password)
+                {
+                    msg += "\n\n" + L10n["Msg_ExportDoneNoPwd"];
+                }
+                MessageBox.Show(msg, L10n["Msg_ExportDoneTitle"], MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -1179,7 +1452,7 @@ public partial class MainWindow : Window
             int count = 0;
             foreach (var asset in dlg.SyncedAssets)
             {
-                _allAssets.Add(new ServerAssetViewModel(asset));
+                RegisterAsset(new ServerAssetViewModel(asset));
                 count++;
             }
             // 记住接口地址，下次打开直接带出
@@ -1192,7 +1465,19 @@ public partial class MainWindow : Window
 
     private async void BtnProbe_Click(object sender, RoutedEventArgs e)
     {
+        await RunBatchProbeAsync();
+    }
+
+    private async void BtnBatchProbe_Click(object sender, RoutedEventArgs e)
+    {
+        await RunBatchProbeAsync();
+    }
+
+    /// <summary>批量探测当前可见资产的网络可达性与延迟（顶栏「检测延迟」与分组行「批量检测」共用）。</summary>
+    private async Task RunBatchProbeAsync()
+    {
         BtnProbe.IsEnabled = false;
+        BtnBatchProbe.IsEnabled = false;
         TxtStatusBarInfo.Text = L10n["Status_ProbingAll"];
 
         foreach (var vm in _viewAssets)
@@ -1222,8 +1507,8 @@ public partial class MainWindow : Window
 
         SaveAssetsToStore();
         BtnProbe.IsEnabled = true;
+        BtnBatchProbe.IsEnabled = true;
         TxtStatusBarInfo.Text = L10n["Status_ProbeDone"];
-
     }
 
     private void TxtProbeInterval_TextChanged(object sender, TextChangedEventArgs e)
@@ -1326,8 +1611,8 @@ public partial class MainWindow : Window
                 var keyPath = assetToLaunch.SshKeyPath;
                 var username = assetToLaunch.Username;
 
-                // 开启“本机记住密码”时，用 DPAPI 密文免输入直接登录
-                if (string.IsNullOrEmpty(password) && _rememberPassword && !string.IsNullOrEmpty(assetToLaunch.EncryptedPassword))
+                // 只要存在已保存密文就尝试 DPAPI 解密免输入；解密失败（null/空）则走下方补录流程
+                if (string.IsNullOrEmpty(password) && !string.IsNullOrEmpty(assetToLaunch.EncryptedPassword))
                 {
                     password = CredentialProtector.Unprotect(assetToLaunch.EncryptedPassword);
                 }
@@ -1356,7 +1641,7 @@ public partial class MainWindow : Window
                 if (assetToLaunch.JumpAssetId is Guid jumpId)
                 {
                     jumpAsset = _allAssets.FirstOrDefault(a => a.Model.Id == jumpId)?.Model;
-                    if (jumpAsset != null && string.IsNullOrEmpty(jumpAsset.Password) && _rememberPassword
+                    if (jumpAsset != null && string.IsNullOrEmpty(jumpAsset.Password)
                         && !string.IsNullOrEmpty(jumpAsset.EncryptedPassword))
                     {
                         jumpPassword = CredentialProtector.Unprotect(jumpAsset.EncryptedPassword);
@@ -1383,9 +1668,9 @@ public partial class MainWindow : Window
         {
             try
             {
-                // 开启“本机记住密码”时，用 DPAPI 密文写入 .rdp，实现免输入登录
+                // 只要存在已保存密文就尝试 DPAPI 解密并写入 .rdp 免输入；解密失败则由 .rdp 的凭据提示兜底
                 var rdpPassword = assetToLaunch.Password;
-                if (string.IsNullOrEmpty(rdpPassword) && _rememberPassword && !string.IsNullOrEmpty(assetToLaunch.EncryptedPassword))
+                if (string.IsNullOrEmpty(rdpPassword) && !string.IsNullOrEmpty(assetToLaunch.EncryptedPassword))
                 {
                     rdpPassword = CredentialProtector.Unprotect(assetToLaunch.EncryptedPassword);
                 }
@@ -1426,6 +1711,60 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// SSH 连接失败回调：当资产已保存凭据（DPAPI 密文）且失败疑似认证失败时，
+    /// 弹窗让用户重新输入凭据并重连；同一资产仅提示一次，避免凭据仍错误时无限弹窗。
+    /// </summary>
+    private void OnSessionConnectFailed(SessionItemViewModel sessionVm, string? error)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => OnSessionConnectFailed(sessionVm, error));
+            return;
+        }
+
+        // 仅处理 SSH 协议（RDP 由外部 mstsc.exe 启动，应用内无法探测认证失败）
+        var asset = sessionVm.Asset;
+        if (!string.Equals(asset.Protocol, "ssh", StringComparison.OrdinalIgnoreCase)) return;
+
+        // 仅当失败疑似认证失败才回退；网络不可达等错误不弹窗
+        if (string.IsNullOrEmpty(error)) return;
+        bool looksAuthFailure = error.Contains("auth", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("authentication", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("permission denied", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("credential", StringComparison.OrdinalIgnoreCase);
+        if (!looksAuthFailure) return;
+
+        var assetVm = _allAssets.FirstOrDefault(a => a.Id == asset.Id);
+        if (assetVm == null) return;
+
+        // 仅当资产已保存凭据（DPAPI 密文）时才需要回退补录；当场输入的口令无需回退
+        if (string.IsNullOrEmpty(assetVm.Model.EncryptedPassword)) return;
+
+        // 防循环：同一资产只提示一次
+        if (!_authRetryPrompted.Add(assetVm.Id)) return;
+
+        var dlg = new SshCredentialDialog(assetVm.Model.Username, _rememberPassword)
+        {
+            Owner = this,
+            Title = L10n["Cred_ReenterTitle"]
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        assetVm.Model = assetVm.Model with
+        {
+            Username = dlg.Username,
+            SshKeyPath = dlg.PrivateKeyPath ?? assetVm.Model.SshKeyPath,
+            Password = dlg.Password,
+            EncryptedPassword = dlg.RememberPassword ? CredentialProtector.Protect(dlg.Password) : null
+        };
+        SaveAssetsToStore();
+
+        SessionWorkspace.CloseSession(sessionVm);
+        TxtStatusBarInfo.Text = L10n["Status_CredReenter"];
+        ConnectServer(assetVm);
+    }
+
     private static void OpenBrowserUrl(string url)
     {
         try
@@ -1444,6 +1783,9 @@ public partial class MainWindow : Window
 
     private void GridAssets_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
+        // 双击行内交互控件（收藏/模板名/编辑/删除等）时不发起连接
+        if (e.OriginalSource is DependencyObject src && IsInteractiveElement(src)) return;
+
         // 双击直接连接，不展开右侧配置面板
         if (GridAssets.SelectedItem is ServerAssetViewModel vm)
         {
@@ -1453,6 +1795,9 @@ public partial class MainWindow : Window
 
     private void GridAssets_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        // 行选中变化后刷新「已选 N 台」与表头三态
+        UpdateSelectionSummary();
+
         if (GridAssets.SelectedItem is ServerAssetViewModel vm)
         {
             EnsureDetailsPanelExpanded();
@@ -1466,6 +1811,19 @@ public partial class MainWindow : Window
             InspectorTxtGroup.Text = vm.Model.Group;
             InspectorTxtOwner.Text = vm.Model.Owner;
             InspectorTxtUsername.Text = vm.Model.Username;
+
+            // 资产级凭据：出于安全不回显明文，仅展示是否已保存密文
+            InspectorTxtPassword.Password = "";
+            if (!string.IsNullOrEmpty(vm.Model.EncryptedPassword))
+            {
+                InspectorCredentialState.Text = L10n[ResCredStateSaved];
+                RbCredPersist.IsChecked = true;
+            }
+            else
+            {
+                InspectorCredentialState.Text = L10n[ResCredStateNone];
+                RbCredSessionOnly.IsChecked = true;
+            }
 
             // 按协议仅显示对应参数（SSH 资产隐藏 RDP 专属的分辨率设置）
             SetInspectorProtocol(vm.Model.Protocol);
@@ -1560,6 +1918,25 @@ public partial class MainWindow : Window
                 expiresOn = parsedDate;
             }
 
+            // 资产级凭据：根据密码输入与保存范围决定密文与内存明文
+            //  - 输入密码并选“长期保存”：写入 DPAPI 密文，同时保留本次会话内存明文
+            //  - 输入密码并选“仅本次会话”：不落盘密文，仅保留本次会话内存明文
+            //  - 未输入密码：保留原密文；但若用户已切到“仅本次会话”而原资产有密文，则视为放弃长期保存
+            var pw = InspectorTxtPassword.Password;
+            bool persist = RbCredPersist.IsChecked == true;
+            string? encryptedPassword = vm.Model.EncryptedPassword;
+            string? sessionPassword = vm.Model.Password;
+            if (!string.IsNullOrEmpty(pw))
+            {
+                encryptedPassword = persist ? CredentialProtector.Protect(pw) : null;
+                sessionPassword = pw;
+            }
+            else if (!persist && !string.IsNullOrEmpty(vm.Model.EncryptedPassword))
+            {
+                encryptedPassword = null;
+            }
+            var credential = (Encrypted: encryptedPassword, Session: sessionPassword);
+
             var updatedModel = vm.Model with
             {
                 Name = InspectorTxtName.Text.Trim(),
@@ -1569,6 +1946,8 @@ public partial class MainWindow : Window
                 Owner = InspectorTxtOwner.Text.Trim(),
                 Protocol = protocol,
                 Username = InspectorTxtUsername.Text.Trim(),
+                EncryptedPassword = credential.Encrypted,
+                Password = credential.Session,
                 IsFavorite = ChkInspectorFavorite.IsChecked == true,
                 ExpiresOn = expiresOn,
                 CustomNotes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -1589,5 +1968,18 @@ public partial class MainWindow : Window
             GridAssets.SelectedItem = vm;
             MessageBox.Show(L10n["Msg_Saved"], L10n["Msg_Tip"], MessageBoxButton.OK, MessageBoxImage.Information);
         }
+    }
+
+    private void BtnClearCredential_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridAssets.SelectedItem is not ServerAssetViewModel vm) return;
+
+        // 清除当前资产已保存的密文与内存明文
+        vm.Model = vm.Model with { EncryptedPassword = null, Password = null };
+        InspectorTxtPassword.Password = "";
+        RbCredSessionOnly.IsChecked = true;
+        InspectorCredentialState.Text = L10n[ResCredStateNone];
+        SaveAssetsToStore();
+        TxtStatusBarInfo.Text = L10n.Format("Status_CredentialCleared", vm.Model.Name);
     }
 }

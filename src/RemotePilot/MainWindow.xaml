@@ -11,18 +11,63 @@
         Background="{DynamicResource AppBackground}" Foreground="{DynamicResource AppForeground}">
     
     <Window.Resources>
-        <!-- 到期高亮样式 -->
+        <!-- 到期高亮样式：琥珀色预警；选中态（浅蓝底 + 左侧主色竖条）优先于预警色 -->
         <Style x:Key="ExpiryRowStyle" TargetType="DataGridRow">
             <Setter Property="Background" Value="{DynamicResource SurfaceBackground}"/>
             <Setter Property="Foreground" Value="{DynamicResource AppForeground}"/>
             <Setter Property="MinHeight" Value="42"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridRow">
+                        <Border x:Name="DGR_Border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                SnapsToDevicePixels="True">
+                            <Grid>
+                                <!-- 沿用默认模板的单元格/行细节/行头结构，保持观感一致 -->
+                                <SelectiveScrollingGrid>
+                                    <SelectiveScrollingGrid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </SelectiveScrollingGrid.ColumnDefinitions>
+                                    <SelectiveScrollingGrid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </SelectiveScrollingGrid.RowDefinitions>
+
+                                    <DataGridCellsPresenter Grid.Column="1"
+                                                            ItemsPanel="{TemplateBinding ItemsPanel}"
+                                                            SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+
+                                    <DataGridDetailsPresenter Grid.Column="1" Grid.Row="1"
+                                                              Visibility="{TemplateBinding DetailsVisibility}"
+                                                              SelectiveScrollingGrid.SelectiveScrollingOrientation="{Binding RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}, Path=AreRowDetailsFrozen, Converter={x:Static DataGrid.RowDetailsScrollingConverter}, ConverterParameter={x:Static SelectiveScrollingOrientation.Vertical}}"/>
+
+                                    <DataGridRowHeader Grid.RowSpan="2"
+                                                       SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical"
+                                                       Visibility="{Binding RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}, Path=HeadersVisibility, Converter={x:Static DataGrid.HeadersVisibilityConverter}, ConverterParameter={x:Static DataGridHeadersVisibility.Row}}"/>
+                                </SelectiveScrollingGrid>
+
+                                <!-- 选中态左侧主色竖条 -->
+                                <Border x:Name="SelectionBar" Width="3" HorizontalAlignment="Left"
+                                        Background="Transparent" IsHitTestVisible="False"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="SelectionBar" Property="Background" Value="{DynamicResource Primary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
             <Style.Triggers>
                 <Trigger Property="ItemsControl.AlternationIndex" Value="1">
                     <Setter Property="Background" Value="{DynamicResource DataGridRowAlternate}"/>
                 </Trigger>
                 <DataTrigger Binding="{Binding IsExpiredOrNear}" Value="True">
-                    <Setter Property="Background" Value="#33FF4D4F"/>
+                    <Setter Property="Background" Value="{DynamicResource ExpiryRowWarnBackground}"/>
                 </DataTrigger>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="{DynamicResource SelectedBackground}"/>
@@ -40,7 +85,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- 左侧紧凑导航栏 -->
-        <Border x:Name="BorderLeftNav" Grid.Column="0" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+        <Border x:Name="BorderLeftNav" Grid.Column="0" Background="{DynamicResource SidebarBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0" MouseEnter="BorderLeftNav_MouseEnter" MouseLeave="BorderLeftNav_MouseLeave">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="60"/>
@@ -48,27 +93,56 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Logo 与标题 -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
-                    <Image Source="Assets/logo.png" Width="32" Height="32" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="RemotePilot" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AppForeground}"/>
-                        <TextBlock Text="RemoteOps v2.0" FontSize="10" Foreground="{DynamicResource MutedForeground}"/>
+                <!-- Logo 与标题 + 折叠/展开按钮 -->
+                <Grid Grid.Row="0" Margin="10,0">
+                    <StackPanel x:Name="PanelLogoRow" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+                        <Image Source="Assets/logo.png" Width="32" Height="32" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <StackPanel x:Name="PanelLogoText" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="RemotePilot" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AppForeground}"/>
+                            <TextBlock Text="RemoteOps v2.0" FontSize="10" Foreground="{DynamicResource MutedForeground}"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
+                    <Button x:Name="BtnToggleLeftNav" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource ModernButtonStyle}" Padding="6,4" Background="Transparent" BorderThickness="0" Click="BtnToggleLeftNav_Click">
+                        <Grid>
+                            <TextBlock x:Name="TxtLeftNavGlyphCollapse" Text="{DynamicResource {x:Static local:MainWindow.ResBtnToggleLeftNav}}"/>
+                            <TextBlock x:Name="TxtLeftNavGlyphExpand" Text="{DynamicResource {x:Static local:MainWindow.ResBtnToggleLeftNavExpand}}" Visibility="Collapsed"/>
+                        </Grid>
+                    </Button>
+                </Grid>
 
                 <!-- 导航菜单列表 -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="8,14">
-                        <Button x:Name="NavBtnAssets" Content="{DynamicResource {x:Static local:MainWindow.ResNavAssets}}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnAssets_Click"/>
-                        <Button x:Name="NavBtnSessions" Content="{DynamicResource {x:Static local:MainWindow.ResNavSessions}}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnSessions_Click"/>
-                        <Button x:Name="NavBtnFavorites" Content="{DynamicResource {x:Static local:MainWindow.ResNavFavorites}}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnFavorites_Click"/>
-                        <Button x:Name="NavBtnRecent" Content="{DynamicResource {x:Static local:MainWindow.ResNavRecent}}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnRecent_Click"/>
+                        <Button x:Name="NavBtnAssets" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnAssets_Click">
+                            <Grid>
+                                <TextBlock Text="🗂" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtNavAssetsLabel" Text="{DynamicResource {x:Static local:MainWindow.ResNavAssets}}" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+                        <Button x:Name="NavBtnSessions" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnSessions_Click">
+                            <Grid>
+                                <TextBlock Text="🖥" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtNavSessionsLabel" Text="{DynamicResource {x:Static local:MainWindow.ResNavSessions}}" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+                        <Button x:Name="NavBtnFavorites" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnFavorites_Click">
+                            <Grid>
+                                <TextBlock Text="⭐" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtNavFavoritesLabel" Text="{DynamicResource {x:Static local:MainWindow.ResNavFavorites}}" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+                        <Button x:Name="NavBtnRecent" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnRecent_Click">
+                            <Grid>
+                                <TextBlock Text="🕘" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtNavRecentLabel" Text="{DynamicResource {x:Static local:MainWindow.ResNavRecent}}" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
 
                         <!-- 服务器分组：可展开，展开后在下方直接列出现有分组 -->
                         <Button x:Name="NavBtnGroups" AutomationProperties.Name="{DynamicResource {x:Static local:MainWindow.ResNavGroups}}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnGroups_Click">
                             <Grid>
-                                <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResNavGroups}}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock Text="📁" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtNavGroupsLabel" Text="{DynamicResource {x:Static local:MainWindow.ResNavGroups}}" Margin="26,0,20,0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                                 <TextBlock x:Name="TxtNavGroupsChevron" Text="▸" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11"/>
                             </Grid>
                         </Button>
@@ -80,7 +154,7 @@
                 </ScrollViewer>
 
                 <!-- 底部主题与语言快捷切换按钮 -->
-                <StackPanel Grid.Row="2" Margin="10" Orientation="Vertical">
+                <StackPanel x:Name="PanelNavBottom" Grid.Row="2" Margin="10" Orientation="Vertical">
                     <UniformGrid Columns="2" Margin="0,0,0,6">
                         <Button x:Name="BtnToggleTheme" Content="{DynamicResource {x:Static local:MainWindow.ResThemeToggle}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Padding="6,4" Click="BtnToggleTheme_Click"/>
                         <Button x:Name="BtnToggleLang" Content="{DynamicResource {x:Static local:MainWindow.ResLangToggle}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Padding="6,4" Click="BtnToggleLang_Click"/>
@@ -127,6 +201,8 @@
                         <Button x:Name="BtnImport" Content="{DynamicResource {x:Static local:MainWindow.ResBtnImport}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Click="BtnImport_Click"/>
                         <Button x:Name="BtnImportTemplate" Content="{DynamicResource {x:Static local:MainWindow.ResBtnImportTemplate}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Click="BtnImportTemplate_Click"/>
                         <Button x:Name="BtnExportSelected" Content="{DynamicResource {x:Static local:MainWindow.ResBtnExportSelected}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Click="BtnExportSelected_Click"/>
+                        <Button x:Name="BtnInvertSelect" Content="{DynamicResource {x:Static local:MainWindow.ResBtnInvertSelect}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Click="BtnInvertSelect_Click"/>
+                        <TextBlock x:Name="TxtSelectedCount" VerticalAlignment="Center" Margin="8,0" Foreground="{DynamicResource MutedForeground}"/>
                         <Button x:Name="BtnDelete" Content="{DynamicResource {x:Static local:MainWindow.ResBtnDelete}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Click="BtnDelete_Click"/>
                         <Button x:Name="BtnSyncCloud" Content="{DynamicResource {x:Static local:MainWindow.ResBtnSyncCloud}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Click="BtnSyncCloud_Click"/>
                     </StackPanel>
@@ -172,7 +248,10 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <WrapPanel x:Name="PanelGroupBadges" Orientation="Horizontal" VerticalAlignment="Center"/>
-                    <Button x:Name="BtnExpirySummaryBanner" Grid.Column="1" Content="{DynamicResource {x:Static local:MainWindow.ResBtnExpiryBanner}}" Style="{StaticResource ModernButtonStyle}" Background="#FFFBE6" Foreground="#B06000" Padding="10,4" Margin="4,0" Visibility="Collapsed" Click="BtnExpirySummaryBanner_Click"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="BtnBatchProbe" Content="{DynamicResource {x:Static local:MainWindow.ResBtnBatchProbe}}" Style="{StaticResource ModernButtonStyle}" Padding="10,4" Margin="4,0" Click="BtnBatchProbe_Click"/>
+                        <Button x:Name="BtnExpirySummaryBanner" Content="{DynamicResource {x:Static local:MainWindow.ResBtnExpiryBanner}}" Style="{StaticResource ModernButtonStyle}" Background="#FFFBE6" Foreground="#B06000" Padding="10,4" Margin="4,0" Visibility="Collapsed" Click="BtnExpirySummaryBanner_Click"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -182,6 +261,7 @@
                           RowStyle="{StaticResource ExpiryRowStyle}" SelectionMode="Extended"
                           Background="{DynamicResource SurfaceBackground}" Foreground="{DynamicResource AppForeground}"
                           BorderBrush="{DynamicResource BorderBrush}" MouseDoubleClick="GridAssets_MouseDoubleClick"
+                          PreviewMouseLeftButtonDown="GridAssets_PreviewMouseLeftButtonDown"
                           SelectionChanged="GridAssets_SelectionChanged"
                           AlternationCount="2"
                           GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource BorderBrush}">
@@ -196,7 +276,20 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridCheckBoxColumn Header="{Binding [Col_Select], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                        <!-- 选择列：表头为三态复选框（全选/半选/全不选当前可见行），单元格双向绑定 IsSelected -->
+                        <DataGridTemplateColumn Width="50">
+                            <DataGridTemplateColumn.Header>
+                                <CheckBox IsThreeState="True" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Click="ChkSelectAllHeader_Click"
+                                          ToolTip="{Binding [Col_Select], Source={x:Static svc:LocalizationManager.Instance}}"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="{Binding [Col_Group], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Group}" Width="90" IsReadOnly="True"/>
                         
                         <!-- 模板列：可点击打开连接方案抽屉 -->
@@ -248,7 +341,8 @@
                         <DataGridTemplateColumn Header="{Binding [Col_Status], Source={x:Static svc:LocalizationManager.Instance}}" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Border Background="{Binding StatusBadgeBackground}" CornerRadius="3" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                    <Border Background="{Binding StatusBadgeBackground}" CornerRadius="3" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                            ToolTip="{Binding [Tip_StatusNotProbed], Source={x:Static svc:LocalizationManager.Instance}}">
                                         <TextBlock Text="{Binding StatusDisplay}" Foreground="{Binding StatusBadgeForeground}" FontSize="11" FontWeight="SemiBold"/>
                                     </Border>
                                 </DataTemplate>
@@ -415,6 +509,17 @@
                                     <TextBox x:Name="InspectorTxtUsername" Style="{StaticResource ModernTextBoxStyle}"/>
                                 </StackPanel>
                             </UniformGrid>
+
+                            <!-- 资产级凭据（密码/凭据）管理 -->
+                            <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResInspPassword}}" FontWeight="SemiBold" Margin="0,0,0,2" Foreground="{DynamicResource AppForeground}"/>
+                            <PasswordBox x:Name="InspectorTxtPassword" Padding="4" Margin="0,0,0,4" Background="{DynamicResource AppBackground}" Foreground="{DynamicResource AppForeground}" BorderBrush="{DynamicResource BorderBrush}"/>
+                            <TextBlock x:Name="InspectorCredentialState" FontSize="11" Foreground="{DynamicResource MutedForeground}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <RadioButton x:Name="RbCredSessionOnly" GroupName="CredScope" Content="{DynamicResource {x:Static local:MainWindow.ResCredSessionOnly}}" Foreground="{DynamicResource AppForeground}" Margin="0,0,12,0"/>
+                                <RadioButton x:Name="RbCredPersist" GroupName="CredScope" Content="{DynamicResource {x:Static local:MainWindow.ResCredLongTerm}}" Foreground="{DynamicResource AppForeground}"/>
+                            </StackPanel>
+                            <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResCredHint}}" FontSize="11" Foreground="{DynamicResource MutedForeground}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                            <Button x:Name="BtnClearCredential" Content="{DynamicResource {x:Static local:MainWindow.ResBtnClearCredential}}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Left" Margin="0,0,0,8" Click="BtnClearCredential_Click"/>
 
                             <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResInspExpiresOn}}" FontWeight="SemiBold" Margin="0,0,0,2" Foreground="{DynamicResource AppForeground}"/>
                             <TextBox x:Name="InspectorTxtExpiresOn" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,8"/>

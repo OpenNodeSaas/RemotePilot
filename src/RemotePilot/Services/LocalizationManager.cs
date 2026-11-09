@@ -105,12 +105,16 @@ public class LocalizationManager : INotifyPropertyChanged
     private static readonly Dictionary<string, string> _zhStrings = new()
     {
         // 导航栏
-        ["Nav_Assets"] = "🗂 资产中心",
-        ["Nav_Sessions"] = "🖥 会话工作台",
-        ["Nav_Favorites"] = "⭐ 收藏列表",
-        ["Nav_Recent"] = "🕘 最近使用",
-        ["Nav_Groups"] = "📁 服务器分组",
+        ["Nav_Assets"] = "资产中心",
+        ["Nav_Sessions"] = "会话工作台",
+        ["Nav_Favorites"] = "收藏列表",
+        ["Nav_Recent"] = "最近使用",
+        ["Nav_Groups"] = "服务器分组",
         ["Nav_Feedback"] = "✉ 留下您的宝贵意见",
+        ["Btn_ToggleLeftNav"] = "◀",
+        ["Btn_ToggleLeftNavExpand"] = "▶",
+        ["Tip_CollapseLeftNav"] = "收起导航栏",
+        ["Tip_ExpandLeftNav"] = "展开导航栏",
         ["Msg_FeedbackTitle"] = "RemotePilot 意见反馈",
         ["Msg_FeedbackFallback"] = "感谢您愿意为 RemotePilot 提出宝贵建议，我们会认真阅读每一条反馈。\n\n当前电脑没有检测到可用的邮件客户端，因此未能自动打开发信窗口。\n请手动发送邮件至：\n\nremotemate@protonmail.com\n\n小提示：在此窗口按 Ctrl+C 可复制全文，粘贴到任意邮箱网页版即可发送。",
 
@@ -183,7 +187,7 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Setting_Resolution"] = "分辨率设置",
         ["Setting_ProbeInterval"] = "定时探测间隔(分)",
         ["Setting_RememberPassword"] = "本机记住登录密码",
-        ["Setting_RememberPasswordHint"] = "开启后，SSH 密码使用 Windows DPAPI 加密后仅保存在本机；下次连接自动登录，无需再次输入。关闭时会立即清除已保存的密码。",
+        ["Setting_RememberPasswordHint"] = "开启后，SSH 与 RDP 的密码使用 Windows DPAPI 加密后仅保存在本机；下次连接自动登录，无需再次输入。关闭时会立即清除所有已保存的密码。",
         ["Setting_Bit8"] = "8位",
         ["Setting_Bit15"] = "15位",
         ["Setting_Bit16"] = "16位",
@@ -203,6 +207,7 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Insp_Owner"] = "负责人",
         ["Insp_Protocol"] = "协议",
         ["Insp_Username"] = "账号",
+        ["Insp_Password"] = "密码 / 凭据",
         ["Insp_ExpiresOn"] = "到期日期 (yyyy-MM-dd)",
         ["Insp_Note1"] = "业务备注 1",
         ["Insp_Note2"] = "业务备注 2",
@@ -271,12 +276,19 @@ public class LocalizationManager : INotifyPropertyChanged
 
         // SSH 凭据
         ["Cred_Title"] = "SSH 登录凭据",
+        ["Cred_ReenterTitle"] = "认证失败，请重新输入凭据",
+        ["Status_CredReenter"] = "凭据已更新，正在重新连接…",
         ["Cred_Subtitle"] = "密码只保存在本次运行的内存中，绝不落盘。",
         ["Cred_Username"] = "用户名",
         ["Cred_Password"] = "密码",
         ["Cred_KeyPath"] = "私钥文件 (可选)",
         ["Cred_Passphrase"] = "私钥口令 (可选)",
-        ["Cred_Hint"] = "密码与私钥二选一即可；留空则会连接失败。",
+        ["Cred_Hint"] = "长期保存使用 Windows DPAPI 按当前系统账户加密，仅存本机、不上传云端；更换机器或系统账户后无法解密。",
+        ["Cred_StateSaved"] = "已保存密码（本机加密）",
+        ["Cred_StateNone"] = "未保存凭据",
+        ["Cred_SessionOnly"] = "仅本次会话",
+        ["Cred_LongTerm"] = "长期保存（本机加密）",
+        ["Btn_ClearCredential"] = "清除已保存凭据",
         ["Cred_Connect"] = "连接",
         ["Cred_DialogHint"] = "该服务器尚未保存可用凭据，请输入本次连接使用的凭据。",
         ["Cred_UsernameLabel"] = "用户名:",
@@ -290,13 +302,14 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Status_Ready"] = "就绪 - RemotePilot",
         ["Status_RememberPasswordOn"] = "已开启本机记住密码（DPAPI 加密保存）",
         ["Status_RememberPasswordOff"] = "已关闭本机记住密码，已清除本地保存的密码",
+        ["Status_CredentialCleared"] = "已清除 {0} 的已保存凭据",
         ["Status_Total"] = "共 {0} 台服务器，当前显示 {1} 台",
         ["Msg_Tip"] = "提示",
         ["Msg_SelectAsset"] = "请先选择一台服务器资产。",
         ["Msg_SelectToDelete"] = "请先勾选需要删除的服务器。",
-        ["Msg_ConfirmDelete"] = "确认删除服务器 \"{0}\" 吗？",
+        ["Msg_ConfirmDelete"] = "确认删除服务器 \"{0}\"（{1}）吗？",
         ["Msg_DeleteTitle"] = "确认删除",
-        ["Msg_ConfirmBatchDelete"] = "确认删除选中的 {0} 台服务器吗？",
+        ["Msg_ConfirmBatchDelete"] = "确认删除选中的 {0} 台服务器吗？\n\n{1}",
         ["Msg_BatchDeleteTitle"] = "批量删除确认",
         ["Msg_Saved"] = "资产属性已成功保存。",
         ["Msg_ExportedEmpty"] = "没有可导出的服务器资产。",
@@ -460,6 +473,14 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Dlg_ExportFilter"] = "CSV 文件 (*.csv)|*.csv",
         ["Csv_ErrorIpPort"] = "服务器IP和端口缺失或无效",
 
+        // 导出字段选择
+        ["Dlg_ExportFieldsTitle"] = "选择导出字段",
+        ["ExpFld_Hint"] = "请选择需要导出的字段。密码默认不导出；勾选密码后将以明文写入文件，存在泄露风险。",
+        ["ExpFld_PasswordWarn"] = "⚠️ 勾选“密码”会把服务器凭据以明文写入 CSV，请务必妥善保管导出文件。",
+        ["ExpFld_RiskTitle"] = "明文密码泄露风险",
+        ["ExpFld_RiskBody"] = "您勾选了导出密码列。密码会以明文形式写入 CSV 文件，任何拿到该文件的人都能看到服务器凭据，可能造成安全风险。\n\n确定要明文导出密码吗？",
+        ["Msg_ExportDoneNoPwd"] = "凭据不在本次导出范围内，请另行备份。",
+
         // 接口导入对话框（用户自定义接口，无需登录任何平台）
         ["Sync_Title"] = "从接口导入资产 - RemotePilot",
         ["Sync_Header"] = "从自定义接口导入资产",
@@ -477,18 +498,30 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Sync_Fetching"] = "正在解析接口返回数据...",
         ["Sync_Fetched"] = "已获取到 {0} 个资产（去重后 {1} 个），请勾选并确认导入。",
         ["Sync_Imported"] = "成功导入 {0} 个资产！",
-        ["Sync_Error"] = "导入出错: {0}"
+        ["Sync_Error"] = "导入出错: {0}",
+
+        // 全选/反选与选中计数
+        ["Btn_InvertSelect"] = "反选",
+        ["Status_SelectedCount"] = "已选 {0} 台",
+        ["Btn_BatchProbe"] = "批量检测",
+        ["Tip_StatusNotProbed"] = "尚未进行连通性检测。点击『批量检测』可对所有资产探测连通性。",
+        ["Tip_ExpiryBannerItem"] = "{0} ({1}) 到期日 {2}",
+        ["Msg_DeleteListMore"] = "… 其余 {0} 台未列出"
     };
 
     private static readonly Dictionary<string, string> _enStrings = new()
     {
         // Navigation
-        ["Nav_Assets"] = "🗂 Asset Hub",
-        ["Nav_Sessions"] = "🖥 Session Hub",
-        ["Nav_Favorites"] = "⭐ Favorites",
-        ["Nav_Recent"] = "🕘 Recent",
-        ["Nav_Groups"] = "📁 Groups",
+        ["Nav_Assets"] = "Asset Hub",
+        ["Nav_Sessions"] = "Session Hub",
+        ["Nav_Favorites"] = "Favorites",
+        ["Nav_Recent"] = "Recent",
+        ["Nav_Groups"] = "Groups",
         ["Nav_Feedback"] = "✉ Send Feedback",
+        ["Btn_ToggleLeftNav"] = "◀",
+        ["Btn_ToggleLeftNavExpand"] = "▶",
+        ["Tip_CollapseLeftNav"] = "Collapse navigation",
+        ["Tip_ExpandLeftNav"] = "Expand navigation",
         ["Msg_FeedbackTitle"] = "RemotePilot Feedback",
         ["Msg_FeedbackFallback"] = "Thank you for helping make RemotePilot better — every piece of feedback is read carefully.\n\nNo mail client was detected on this PC, so the compose window could not be opened automatically.\nPlease email us at:\n\nremotemate@protonmail.com\n\nTip: press Ctrl+C in this window to copy the text, then paste it into any webmail.",
 
@@ -560,7 +593,7 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Setting_Resolution"] = "Resolution",
         ["Setting_ProbeInterval"] = "Auto Ping Interval (min)",
         ["Setting_RememberPassword"] = "Remember passwords on this PC",
-        ["Setting_RememberPasswordHint"] = "When enabled, SSH passwords are encrypted with Windows DPAPI and stored on this PC only; the next connection signs in automatically. Disabling clears all saved passwords immediately.",
+        ["Setting_RememberPasswordHint"] = "When enabled, SSH and RDP passwords are encrypted with Windows DPAPI and stored on this PC only; the next connection signs in automatically. Disabling clears all saved passwords immediately.",
         ["Setting_Bit8"] = "8-bit",
         ["Setting_Bit15"] = "15-bit",
         ["Setting_Bit16"] = "16-bit",
@@ -580,6 +613,7 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Insp_Owner"] = "Owner",
         ["Insp_Protocol"] = "Protocol",
         ["Insp_Username"] = "Username",
+        ["Insp_Password"] = "Password / Credential",
         ["Insp_ExpiresOn"] = "Expires On (yyyy-MM-dd)",
         ["Insp_Note1"] = "Business Note 1",
         ["Insp_Note2"] = "Business Note 2",
@@ -648,12 +682,19 @@ public class LocalizationManager : INotifyPropertyChanged
 
         // SSH credentials
         ["Cred_Title"] = "SSH Credentials",
+        ["Cred_ReenterTitle"] = "Authentication failed, please re-enter credentials",
+        ["Status_CredReenter"] = "Credentials updated, reconnecting…",
         ["Cred_Subtitle"] = "Password is kept in memory for this run only and never written to disk.",
         ["Cred_Username"] = "Username",
         ["Cred_Password"] = "Password",
         ["Cred_KeyPath"] = "Private Key File (optional)",
         ["Cred_Passphrase"] = "Key Passphrase (optional)",
-        ["Cred_Hint"] = "Provide either a password or a private key; otherwise the connection will fail.",
+        ["Cred_Hint"] = "Permanent storage is encrypted with Windows DPAPI under the current system account, stored on this PC only, and never uploaded. It cannot be decrypted after switching machine or account.",
+        ["Cred_StateSaved"] = "Password saved (encrypted on this PC)",
+        ["Cred_StateNone"] = "No saved credential",
+        ["Cred_SessionOnly"] = "This session only",
+        ["Cred_LongTerm"] = "Save permanently (encrypted on this PC)",
+        ["Btn_ClearCredential"] = "Clear saved credential",
         ["Cred_Connect"] = "Connect",
         ["Cred_DialogHint"] = "No usable credentials are saved for this server. Enter credentials for this connection.",
         ["Cred_UsernameLabel"] = "Username:",
@@ -667,13 +708,14 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Status_Ready"] = "Ready - RemotePilot",
         ["Status_RememberPasswordOn"] = "Remember passwords enabled (DPAPI encrypted)",
         ["Status_RememberPasswordOff"] = "Remember passwords disabled; saved passwords cleared",
+        ["Status_CredentialCleared"] = "Cleared saved credential for {0}",
         ["Status_Total"] = "{0} server(s) total, {1} shown",
         ["Msg_Tip"] = "Notice",
         ["Msg_SelectAsset"] = "Please select a server asset first.",
         ["Msg_SelectToDelete"] = "Please check the servers to delete.",
-        ["Msg_ConfirmDelete"] = "Delete server \"{0}\"?",
+        ["Msg_ConfirmDelete"] = "Delete server \"{0}\" ({1})?",
         ["Msg_DeleteTitle"] = "Confirm Delete",
-        ["Msg_ConfirmBatchDelete"] = "Delete {0} selected server(s)?",
+        ["Msg_ConfirmBatchDelete"] = "Delete {0} selected server(s)?\n\n{1}",
         ["Msg_BatchDeleteTitle"] = "Batch Delete",
         ["Msg_Saved"] = "Asset changes saved.",
         ["Msg_ExportedEmpty"] = "Nothing to export.",
@@ -837,6 +879,14 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Dlg_ExportFilter"] = "CSV files (*.csv)|*.csv",
         ["Csv_ErrorIpPort"] = "Server IP and port are missing or invalid",
 
+        // Export field selection
+        ["Dlg_ExportFieldsTitle"] = "Select Export Fields",
+        ["ExpFld_Hint"] = "Choose the fields to export. Passwords are excluded by default; enabling the password column writes plaintext to the file and may leak credentials.",
+        ["ExpFld_PasswordWarn"] = "⚠️ Enabling \"Password\" writes server credentials to the CSV in plaintext. Keep the exported file safe.",
+        ["ExpFld_RiskTitle"] = "Plaintext Password Risk",
+        ["ExpFld_RiskBody"] = "You chose to export the password column. Passwords will be written to the CSV in plaintext, and anyone with the file can read the server credentials.\n\nExport plaintext passwords anyway?",
+        ["Msg_ExportDoneNoPwd"] = "Credentials are not included in this export; please back them up separately.",
+
         // Import-from-API dialog (user-defined endpoint, no platform login)
         ["Sync_Title"] = "Import Assets from API - RemotePilot",
         ["Sync_Header"] = "Import Assets from Your Own API",
@@ -854,7 +904,15 @@ public class LocalizationManager : INotifyPropertyChanged
         ["Sync_Fetching"] = "Parsing API response...",
         ["Sync_Fetched"] = "Fetched {0} asset(s) ({1} after de-duplication). Select and confirm to import.",
         ["Sync_Imported"] = "Imported {0} asset(s)!",
-        ["Sync_Error"] = "Import error: {0}"
+        ["Sync_Error"] = "Import error: {0}",
+
+        // Select all / invert & selected count
+        ["Btn_InvertSelect"] = "Invert",
+        ["Status_SelectedCount"] = "{0} selected",
+        ["Btn_BatchProbe"] = "Probe All",
+        ["Tip_StatusNotProbed"] = "No connectivity probe yet. Click \"Probe All\" to test reachability for all assets.",
+        ["Tip_ExpiryBannerItem"] = "{0} ({1}) expires {2}",
+        ["Msg_DeleteListMore"] = "… and {0} more not listed"
     };
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

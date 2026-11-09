@@ -15,6 +15,7 @@
         <SolidColorBrush x:Key="BorderBrush" Color="#D0D7DE"/>
         <SolidColorBrush x:Key="HoverBackground" Color="#EAECEF"/>
         <SolidColorBrush x:Key="SelectedBackground" Color="#DBEAFE"/>
+        <SolidColorBrush x:Key="ExpiryRowWarnBackground" Color="#33F0B429"/>
         <SolidColorBrush x:Key="Primary" Color="#0969DA"/>
         <SolidColorBrush x:Key="PrimaryHover" Color="#0854B0"/>
         <SolidColorBrush x:Key="Success" Color="#1A7F37"/>

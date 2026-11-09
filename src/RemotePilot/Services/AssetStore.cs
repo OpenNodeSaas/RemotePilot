@@ -17,6 +17,9 @@ public sealed record AssetStoreData
 
     // 用户自定义的资产接口地址（"接口导入"上次使用的 URL）
     public string AssetApiUrl { get; init; } = "";
+
+    // 左侧导航是否处于折叠（图标条）状态
+    public bool IsLeftNavCollapsed { get; init; }
 }
 
 public sealed class AssetStore
@@ -103,7 +106,8 @@ public sealed class AssetStore
                 Templates = validTemplates,
                 ExpiryLeadDays = data.ExpiryLeadDays > 0 ? data.ExpiryLeadDays : 30,
                 RememberPassword = data.RememberPassword,
-                AssetApiUrl = data.AssetApiUrl ?? ""
+                AssetApiUrl = data.AssetApiUrl ?? "",
+                IsLeftNavCollapsed = data.IsLeftNavCollapsed
             };
         }
         catch

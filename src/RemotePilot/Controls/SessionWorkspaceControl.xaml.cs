@@ -74,6 +74,9 @@ public partial class SessionWorkspaceControl : UserControl
     public event Action? RequestOpenSettingsDrawer;
     public event Action? RequestFullscreenToggle;
 
+    /// <summary>SSH 会话连接失败时触发（UI 线程），携带失败会话与错误信息，供上层决定是否回退提示重新输入凭据。</summary>
+    public event Action<SessionItemViewModel, string?>? SessionConnectFailed;
+
     public ObservableCollection<SessionItemViewModel> Sessions => _sessions;
 
     public SessionWorkspaceControl()
@@ -237,6 +240,7 @@ public partial class SessionWorkspaceControl : UserControl
                 var failed = L10n.Format("Term_ConnectFailed", connectError ?? "");
                 ShowMessage(failed);
                 terminal.SetStatus(L10n["Term_StatusFailed"]);
+                SessionConnectFailed?.Invoke(vm, connectError);
             }
         };
 

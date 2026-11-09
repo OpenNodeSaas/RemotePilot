@@ -150,6 +150,65 @@ public class AssetStoreTests
     }
 
     [Fact]
+    public void TestIsLeftNavCollapsedRoundTrip()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var store = new AssetStore(tempFile);
+
+            store.Save(new AssetStoreData { IsLeftNavCollapsed = true });
+            Assert.True(store.Load().IsLeftNavCollapsed);
+
+            store.Save(new AssetStoreData { IsLeftNavCollapsed = false });
+            Assert.False(store.Load().IsLeftNavCollapsed);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public void TestEncryptedPasswordPersistsButPlainPasswordDoesNot()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var store = new AssetStore(tempFile);
+            var asset = new ServerAsset
+            {
+                Name = "srv-a",
+                Host = "127.0.0.1",
+                Port = 3389,
+                EncryptedPassword = "cipher-blob",
+                Password = "plain"
+            };
+
+            store.Save(new AssetStoreData { Assets = [asset] });
+
+            var loaded = store.Load();
+            var loadedAsset = Assert.Single(loaded.Assets);
+            Assert.Equal("cipher-blob", loadedAsset.EncryptedPassword);
+            Assert.Null(loadedAsset.Password);
+
+            // 明文密码绝不落盘
+            var json = File.ReadAllText(tempFile);
+            Assert.DoesNotContain("plain", json);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
     public void TestCorruptedJsonHandling()
     {
         var tempFile = Path.GetTempFileName();
