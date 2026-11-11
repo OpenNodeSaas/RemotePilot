@@ -89,12 +89,11 @@ public partial class SessionWorkspaceControl : UserControl
     public void AddSession(ServerAsset asset, string? password = null, string? privateKeyPath = null, string? privateKeyPassphrase = null,
         ServerAsset? jumpAsset = null, string? jumpPassword = null, ConnectionTemplate? template = null)
     {
-        // 检查是否已存在相同资产的会话，若已存在则直接激活
+        // 同一资产再次连接时，关闭旧会话后重新发起连接，确保使用最新的连接参数
         var existing = _sessions.FirstOrDefault(s => s.Asset.Id == asset.Id);
         if (existing != null)
         {
-            SetActiveSession(existing);
-            return;
+            CloseSession(existing);
         }
 
         var vm = new SessionItemViewModel(asset);

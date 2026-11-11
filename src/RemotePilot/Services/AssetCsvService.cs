@@ -25,6 +25,7 @@ public sealed record ExportFieldSelection
     public bool IpPort { get; init; } = true;
     public bool Username { get; init; } = true;
     public bool Password { get; init; } = false;
+    public bool SshKeyPath { get; init; } = false;
     public bool Expires { get; init; } = true;
     public bool Owner { get; init; } = true;
     public bool Note1 { get; init; } = true;
@@ -131,7 +132,7 @@ public static class AssetCsvService
 
     public static string ExportCsv(IEnumerable<ServerAsset> assets, ExportFieldSelection fields)
     {
-        // 按固定顺序构建列，仅包含被勾选的字段；密码列紧跟“账号”之后
+        // 按固定顺序构建列，仅包含被勾选的字段；密码与密钥路径列紧随“账号”之后
         var columns = new List<(string Header, Func<ServerAsset, string> Value)>();
 
         if (fields.Group) columns.Add(("分组", a => SanitizeForCsv(a.Group)));
@@ -139,6 +140,7 @@ public static class AssetCsvService
         if (fields.IpPort) columns.Add(("服务器IP和端口", a => SanitizeForCsv(FormatIpPort(a.Host, a.Port))));
         if (fields.Username) columns.Add(("账号", a => SanitizeForCsv(a.Username)));
         if (fields.Password) columns.Add(("密码", a => SanitizeForCsv(GetPlainPassword(a))));
+        if (fields.SshKeyPath) columns.Add(("密钥路径", a => SanitizeForCsv(a.SshKeyPath)));
         if (fields.Expires) columns.Add(("到期时间", a => SanitizeForCsv(a.ExpiresOn?.ToString("yyyy-MM-dd") ?? "")));
         if (fields.Owner) columns.Add(("负责人", a => SanitizeForCsv(a.Owner)));
         if (fields.Note1) columns.Add(("其他备注1", a => SanitizeForCsv(a.CustomNote1)));
@@ -166,15 +168,6 @@ public static class AssetCsvService
             return asset.Password;
         }
         return CredentialProtector.Unprotect(asset.EncryptedPassword) ?? "";
-    }
-
-    /// <summary>生成给客户自行编辑的标准导入模板（表头 + 一行示例）。</summary>
-    public static string BuildStandardTemplateCsv()
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("分组,服务器名称,服务器IP和端口,账号,密码,到期时间,负责人,其他备注1,其他备注2,其他备注3");
-        sb.AppendLine("示例分组,示例服务器,127.0.0.1:3389,administrator,,2027-12-31,张三,可留空,,");
-        return sb.ToString();
     }
 
     private static string SanitizeForCsv(string? input)

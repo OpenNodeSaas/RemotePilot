@@ -180,6 +180,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<ServerAssetViewModel> _viewAssets = [];
     private string _activeGroupFilter = "";
     private string _searchKeyword = "";
+    private string _inspectorProtocol = "rdp";
     private NavMode _navMode = NavMode.Assets;
     private bool _isGridView;
     private bool _rememberPassword;
@@ -194,6 +195,8 @@ public partial class MainWindow : Window
     private const double LeftNavCollapsedWidth = 56;
     /// <summary>抑制表头三态/计数联动，避免程序化改选时事件递归。</summary>
     private bool _suppressSelectAllSync;
+    /// <summary>顶栏「设备重定向」是否被用户主动改动过；改动后作为本次连接的显式覆盖。</summary>
+    private bool _redirectToolbarTouched;
 
     /// <summary>已就认证失败弹过一次凭据补录的资产，避免同一会话反复弹窗（每个资产仅提示一次）。</summary>
     private readonly HashSet<Guid> _authRetryPrompted = [];
@@ -212,7 +215,6 @@ public partial class MainWindow : Window
     public const string ResBtnSearch = "Btn_Search";
     public const string ResBtnAddServer = "Btn_AddServer";
     public const string ResBtnImport = "Btn_Import";
-    public const string ResBtnImportTemplate = "Btn_ImportTemplate";
     public const string ResBtnExportSelected = "Btn_ExportSelected";
     public const string ResBtnInvertSelect = "Btn_InvertSelect";
     public const string ResBtnDelete = "Btn_Delete";
@@ -243,6 +245,7 @@ public partial class MainWindow : Window
     public const string ResSettingAudio = "Setting_Audio";
     public const string ResSettingClipboard = "Setting_Clipboard";
     public const string ResSettingColorDepth = "Setting_ColorDepth";
+    public const string ResTipDeviceRedirect = "Tip_DeviceRedirect";
     public const string ResSettingBit8 = "Setting_Bit8";
     public const string ResSettingBit15 = "Setting_Bit15";
     public const string ResSettingBit16 = "Setting_Bit16";
@@ -254,27 +257,8 @@ public partial class MainWindow : Window
     public const string ResPanelCollapse = "Panel_Collapse";
     public const string ResPanelExpand = "Panel_Expand";
     public const string ResPanelOverview = "Panel_Overview";
-    public const string ResInspName = "Insp_Name";
-    public const string ResInspHost = "Insp_Host";
-    public const string ResInspPort = "Insp_Port";
-    public const string ResInspGroup = "Insp_Group";
-    public const string ResInspOwner = "Insp_Owner";
-    public const string ResInspProtocol = "Insp_Protocol";
-    public const string ResInspUsername = "Insp_Username";
-    public const string ResInspPassword = "Insp_Password";
-    public const string ResCredStateSaved = "Cred_StateSaved";
-    public const string ResCredStateNone = "Cred_StateNone";
-    public const string ResCredSessionOnly = "Cred_SessionOnly";
-    public const string ResCredLongTerm = "Cred_LongTerm";
-    public const string ResCredHint = "Cred_Hint";
-    public const string ResBtnClearCredential = "Btn_ClearCredential";
-    public const string ResInspExpiresOn = "Insp_ExpiresOn";
-    public const string ResInspNote1 = "Insp_Note1";
-    public const string ResInspNote2 = "Insp_Note2";
-    public const string ResInspNote3 = "Insp_Note3";
     public const string ResInspExpiryWarn = "Insp_ExpiryWarn";
     public const string ResInspLastProbe = "Insp_LastProbe";
-    public const string ResInspSave = "Insp_Save";
     public const string ResInspPlaceholder = "Insp_Placeholder";
     public const string ResDiagTitle = "Diag_Title";
     public const string ResDiagReason = "Diag_Reason";
@@ -291,7 +275,6 @@ public partial class MainWindow : Window
     public const string ResSettingProbeInterval = "Setting_ProbeInterval";
     public const string ResSettingRememberPassword = "Setting_RememberPassword";
     public const string ResSettingRememberPasswordHint = "Setting_RememberPasswordHint";
-    public const string ResInspFavorite = "Insp_Favorite";
     public const string ResStatusReady = "Status_Ready";
 
     private static LocalizationManager L10n => LocalizationManager.Instance;
@@ -299,6 +282,14 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        // 顶栏「设备重定向」被用户主动改动后，作为本次连接的显式覆盖
+        ChkDriveMap.Checked += RedirectToolbar_Changed;
+        ChkDriveMap.Unchecked += RedirectToolbar_Changed;
+        ChkAudio.Checked += RedirectToolbar_Changed;
+        ChkAudio.Unchecked += RedirectToolbar_Changed;
+        ChkClipboard.Checked += RedirectToolbar_Changed;
+        ChkClipboard.Unchecked += RedirectToolbar_Changed;
 
         _assetStore = new AssetStore();
         _probe = new ReachabilityProbe(10);
@@ -1268,31 +1259,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void BtnImportTemplate_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new SaveFileDialog
-        {
-            Title = L10n["Dlg_TemplateTitle"],
-            Filter = L10n["Dlg_ExportFilter"],
-            FileName = "服务器导入模板.csv"
-        };
-
-        if (dlg.ShowDialog() != true)
-        {
-            return;
-        }
-
-        try
-        {
-            File.WriteAllText(dlg.FileName, AssetCsvService.BuildStandardTemplateCsv(), System.Text.Encoding.UTF8);
-            MessageBox.Show(L10n.Format("Msg_TemplateSaved", dlg.FileName), L10n["Msg_ImportDoneTitle"], MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(L10n.Format("Msg_ExportFailed", ex.Message), L10n["Msg_ErrorTitle"], MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
     private void BtnExportSelected_Click(object sender, RoutedEventArgs e)
     {
         var selected = _viewAssets.Where(a => a.IsSelected).Select(a => a.Model).ToList();
@@ -1319,6 +1285,16 @@ public partial class MainWindow : Window
         if (fields.Password)
         {
             var risk = MessageBox.Show(L10n["ExpFld_RiskBody"], L10n["ExpFld_RiskTitle"], MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (risk != MessageBoxResult.Yes)
+            {
+                return;
+            }
+        }
+
+        // 勾选密钥路径列时，同样做敏感信息确认
+        if (fields.SshKeyPath)
+        {
+            var risk = MessageBox.Show(L10n["ExpFld_KeyPathRiskBody"], L10n["ExpFld_KeyPathRiskTitle"], MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (risk != MessageBoxResult.Yes)
             {
                 return;
@@ -1400,6 +1376,16 @@ public partial class MainWindow : Window
 
     private void BtnSaveSettings_Click(object sender, RoutedEventArgs e)
     {
+        // 将详情面板中的分辨率快速配置写回当前选中的 RDP 资产
+        if (GridAssets.SelectedItem is ServerAssetViewModel vm
+            && !_inspectorProtocol.Equals("ssh", StringComparison.OrdinalIgnoreCase)
+            && PanelRdpResolution.Visibility == Visibility.Visible)
+        {
+            int? rdpWidth = int.TryParse(TxtWidth.Text.Trim(), out var parsedW) && parsedW > 0 ? parsedW : null;
+            int? rdpHeight = int.TryParse(TxtHeight.Text.Trim(), out var parsedH) && parsedH > 0 ? parsedH : null;
+            vm.Model = vm.Model with { RdpWidth = rdpWidth, RdpHeight = rdpHeight };
+        }
+
         SaveAssetsToStore();
         MessageBox.Show(L10n["Msg_SettingsSaved"], L10n["Msg_Tip"], MessageBoxButton.OK, MessageBoxImage.Information);
     }
@@ -1583,7 +1569,7 @@ public partial class MainWindow : Window
         ConnectServer(target);
     }
 
-    private void ConnectServer(ServerAssetViewModel vm)
+    private void ConnectServer(ServerAssetViewModel vm, bool switchToWorkspace = true)
     {
         int.TryParse(TxtWidth.Text.Trim(), out var w);
         int.TryParse(TxtHeight.Text.Trim(), out var h);
@@ -1648,13 +1634,18 @@ public partial class MainWindow : Window
                     }
                 }
 
-                // 无缝切换并加载到会话工作台
-                GridAssets.Visibility = Visibility.Collapsed;
-                SessionWorkspace.Visibility = Visibility.Visible;
+                // 加载到会话工作台；switchToWorkspace=false（资产列表双击连接）时停留当前视图，由用户自行切换
                 SessionWorkspace.AddSession(assetToLaunch, password, keyPath, null, jumpAsset, jumpPassword);
-                _navMode = NavMode.Sessions;
-                UpdateNavSelection();
-                TxtStatusBarInfo.Text = L10n.Format("Status_SshOpened", assetToLaunch.Name);
+                if (switchToWorkspace)
+                {
+                    GridAssets.Visibility = Visibility.Collapsed;
+                    SessionWorkspace.Visibility = Visibility.Visible;
+                    _navMode = NavMode.Sessions;
+                    UpdateNavSelection();
+                }
+                TxtStatusBarInfo.Text = switchToWorkspace
+                    ? L10n.Format("Status_SshOpened", assetToLaunch.Name)
+                    : L10n.Format("Status_ConnectBackground", assetToLaunch.Name);
                 BorderConnectionErrorHint.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
@@ -1683,23 +1674,33 @@ public partial class MainWindow : Window
                 }
 
                 // 参数优先级：资产（“连接方案”里配置的）→ 绑定模板 → 顶栏兜底
+                // 顶栏「设备重定向」被用户改动后作为本次连接的显式覆盖；未改动时按 资产 → 模板 → 顶栏默认 取值
+                bool? drivesOverride = _redirectToolbarTouched ? (ChkDriveMap.IsChecked ?? false) : null;
+                bool? audioOverride = _redirectToolbarTouched ? (ChkAudio.IsChecked ?? true) : null;
+                bool? clipboardOverride = _redirectToolbarTouched ? (ChkClipboard.IsChecked ?? false) : null;
+
                 var rdpAsset = assetToLaunch with
                 {
                     RdpWidth = assetToLaunch.RdpWidth ?? rdpTemplate?.RdpWidth ?? (w > 0 ? w : null),
                     RdpHeight = assetToLaunch.RdpHeight ?? rdpTemplate?.RdpHeight ?? (h > 0 ? h : null),
                     RdpColorDepth = assetToLaunch.RdpColorDepth ?? rdpTemplate?.RdpColorDepth ?? colorDepth,
-                    RedirectDrives = assetToLaunch.RedirectDrives ?? rdpTemplate?.RedirectDrives ?? (ChkDriveMap.IsChecked ?? false),
-                    RedirectAudio = assetToLaunch.RedirectAudio ?? rdpTemplate?.RedirectAudio ?? (ChkAudio.IsChecked ?? true),
-                    RedirectClipboard = assetToLaunch.RedirectClipboard ?? rdpTemplate?.RedirectClipboard ?? (ChkClipboard.IsChecked ?? false)
+                    RedirectDrives = drivesOverride ?? assetToLaunch.RedirectDrives ?? rdpTemplate?.RedirectDrives ?? false,
+                    RedirectAudio = audioOverride ?? assetToLaunch.RedirectAudio ?? rdpTemplate?.RedirectAudio ?? true,
+                    RedirectClipboard = clipboardOverride ?? assetToLaunch.RedirectClipboard ?? rdpTemplate?.RedirectClipboard ?? false
                 };
 
-                // RDP 同样支持在会话工作台的嵌入/占位容器中打开
-                GridAssets.Visibility = Visibility.Collapsed;
-                SessionWorkspace.Visibility = Visibility.Visible;
+                // 加载到会话工作台；switchToWorkspace=false（资产列表双击连接）时停留当前视图，由用户自行切换
                 SessionWorkspace.AddSession(rdpAsset, rdpPassword, template: rdpTemplate);
-                _navMode = NavMode.Sessions;
-                UpdateNavSelection();
-                TxtStatusBarInfo.Text = L10n.Format("Status_RdpOpened", assetToLaunch.Name);
+                if (switchToWorkspace)
+                {
+                    GridAssets.Visibility = Visibility.Collapsed;
+                    SessionWorkspace.Visibility = Visibility.Visible;
+                    _navMode = NavMode.Sessions;
+                    UpdateNavSelection();
+                }
+                TxtStatusBarInfo.Text = switchToWorkspace
+                    ? L10n.Format("Status_RdpOpened", assetToLaunch.Name)
+                    : L10n.Format("Status_ConnectBackground", assetToLaunch.Name);
                 BorderConnectionErrorHint.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
@@ -1781,6 +1782,8 @@ public partial class MainWindow : Window
         }
     }
 
+    private void RedirectToolbar_Changed(object sender, RoutedEventArgs e) => _redirectToolbarTouched = true;
+
     private void GridAssets_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         // 双击行内交互控件（收藏/模板名/编辑/删除等）时不发起连接
@@ -1789,7 +1792,7 @@ public partial class MainWindow : Window
         // 双击直接连接，不展开右侧配置面板
         if (GridAssets.SelectedItem is ServerAssetViewModel vm)
         {
-            ConnectServer(vm);
+            ConnectServer(vm, switchToWorkspace: false);
         }
     }
 
@@ -1804,33 +1807,14 @@ public partial class MainWindow : Window
             PanelInspectorForm.Visibility = Visibility.Visible;
             InspectorPlaceholder.Visibility = Visibility.Collapsed;
 
-            ChkInspectorFavorite.IsChecked = vm.Model.IsFavorite;
             InspectorTxtName.Text = vm.Model.Name;
-            InspectorTxtHost.Text = vm.Model.Host;
-            InspectorTxtPort.Text = vm.Model.Port.ToString();
-            InspectorTxtGroup.Text = vm.Model.Group;
-            InspectorTxtOwner.Text = vm.Model.Owner;
-            InspectorTxtUsername.Text = vm.Model.Username;
-
-            // 资产级凭据：出于安全不回显明文，仅展示是否已保存密文
-            InspectorTxtPassword.Password = "";
-            if (!string.IsNullOrEmpty(vm.Model.EncryptedPassword))
-            {
-                InspectorCredentialState.Text = L10n[ResCredStateSaved];
-                RbCredPersist.IsChecked = true;
-            }
-            else
-            {
-                InspectorCredentialState.Text = L10n[ResCredStateNone];
-                RbCredSessionOnly.IsChecked = true;
-            }
+            _inspectorProtocol = string.IsNullOrWhiteSpace(vm.Model.Protocol) ? "rdp" : vm.Model.Protocol;
+            InspectorTxtTarget.Text = $"{_inspectorProtocol} · {vm.Model.Host}:{vm.Model.Port}";
 
             // 按协议仅显示对应参数（SSH 资产隐藏 RDP 专属的分辨率设置）
-            SetInspectorProtocol(vm.Model.Protocol);
-            InspectorTxtExpiresOn.Text = vm.Model.ExpiresOn.HasValue ? vm.Model.ExpiresOn.Value.ToString("yyyy-MM-dd") : "";
-            InspectorTxtNote1.Text = vm.CustomNote1;
-            InspectorTxtNote2.Text = vm.CustomNote2;
-            InspectorTxtNote3.Text = vm.CustomNote3;
+            ApplyInspectorProtocolVisibility();
+            TxtWidth.Text = (vm.Model.RdpWidth ?? 1920).ToString();
+            TxtHeight.Text = (vm.Model.RdpHeight ?? 1080).ToString();
 
             // 到期预警状态
             if (vm.Model.ExpiresOn.HasValue)
@@ -1877,109 +1861,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SetInspectorProtocol(string protocol)
-    {
-        InspectorCmbProtocol.SelectedIndex = protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-        ApplyInspectorProtocolVisibility();
-    }
-
     private void ApplyInspectorProtocolVisibility()
     {
-        var proto = (InspectorCmbProtocol.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "rdp";
-        PanelRdpResolution.Visibility = proto.Equals("ssh", StringComparison.OrdinalIgnoreCase)
+        PanelRdpResolution.Visibility = _inspectorProtocol.Equals("ssh", StringComparison.OrdinalIgnoreCase)
             ? Visibility.Collapsed
             : Visibility.Visible;
-    }
-
-    private void InspectorCmbProtocol_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (PanelRdpResolution == null) return; // 初始化期间控件尚未创建
-        ApplyInspectorProtocolVisibility();
-
-        // 端口仍为默认值时跟随协议切换，避免覆盖用户自定义端口
-        var port = InspectorTxtPort.Text.Trim();
-        if (port.Length == 0 || port == "3389" || port == "22")
-        {
-            var proto = (InspectorCmbProtocol.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "rdp";
-            InspectorTxtPort.Text = proto.Equals("ssh", StringComparison.OrdinalIgnoreCase) ? "22" : "3389";
-        }
-    }
-
-    private void InspectorBtnSave_Click(object sender, RoutedEventArgs e)
-    {
-        if (GridAssets.SelectedItem is ServerAssetViewModel vm)
-        {
-            int.TryParse(InspectorTxtPort.Text.Trim(), out var port);
-            var protocol = (InspectorCmbProtocol.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "rdp";
-            bool isSshProtocol = protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase);
-            DateOnly? expiresOn = null;
-            if (DateOnly.TryParse(InspectorTxtExpiresOn.Text.Trim(), out var parsedDate))
-            {
-                expiresOn = parsedDate;
-            }
-
-            // 资产级凭据：根据密码输入与保存范围决定密文与内存明文
-            //  - 输入密码并选“长期保存”：写入 DPAPI 密文，同时保留本次会话内存明文
-            //  - 输入密码并选“仅本次会话”：不落盘密文，仅保留本次会话内存明文
-            //  - 未输入密码：保留原密文；但若用户已切到“仅本次会话”而原资产有密文，则视为放弃长期保存
-            var pw = InspectorTxtPassword.Password;
-            bool persist = RbCredPersist.IsChecked == true;
-            string? encryptedPassword = vm.Model.EncryptedPassword;
-            string? sessionPassword = vm.Model.Password;
-            if (!string.IsNullOrEmpty(pw))
-            {
-                encryptedPassword = persist ? CredentialProtector.Protect(pw) : null;
-                sessionPassword = pw;
-            }
-            else if (!persist && !string.IsNullOrEmpty(vm.Model.EncryptedPassword))
-            {
-                encryptedPassword = null;
-            }
-            var credential = (Encrypted: encryptedPassword, Session: sessionPassword);
-
-            var updatedModel = vm.Model with
-            {
-                Name = InspectorTxtName.Text.Trim(),
-                Host = InspectorTxtHost.Text.Trim(),
-                Port = port > 0 ? port : (isSshProtocol ? 22 : 3389),
-                Group = InspectorTxtGroup.Text.Trim(),
-                Owner = InspectorTxtOwner.Text.Trim(),
-                Protocol = protocol,
-                Username = InspectorTxtUsername.Text.Trim(),
-                EncryptedPassword = credential.Encrypted,
-                Password = credential.Session,
-                IsFavorite = ChkInspectorFavorite.IsChecked == true,
-                ExpiresOn = expiresOn,
-                CustomNotes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["CustomNote1"] = InspectorTxtNote1.Text,
-                    ["CustomNote2"] = InspectorTxtNote2.Text,
-                    ["CustomNote3"] = InspectorTxtNote3.Text
-                }
-            };
-
-            vm.Model = updatedModel;
-            vm.UpdateExpiryStatus();
-            vm.NotifyFavoriteChanged();
-            SaveAssetsToStore();
-            ApplyFilter();
-
-            // Re-select in grid view
-            GridAssets.SelectedItem = vm;
-            MessageBox.Show(L10n["Msg_Saved"], L10n["Msg_Tip"], MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-    }
-
-    private void BtnClearCredential_Click(object sender, RoutedEventArgs e)
-    {
-        if (GridAssets.SelectedItem is not ServerAssetViewModel vm) return;
-
-        // 清除当前资产已保存的密文与内存明文
-        vm.Model = vm.Model with { EncryptedPassword = null, Password = null };
-        InspectorTxtPassword.Password = "";
-        RbCredSessionOnly.IsChecked = true;
-        InspectorCredentialState.Text = L10n[ResCredStateNone];
-        SaveAssetsToStore();
-        TxtStatusBarInfo.Text = L10n.Format("Status_CredentialCleared", vm.Model.Name);
     }
 }

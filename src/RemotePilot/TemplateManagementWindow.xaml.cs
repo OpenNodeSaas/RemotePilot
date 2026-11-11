@@ -13,6 +13,8 @@ public partial class TemplateManagementWindow : Window
     public const string ResWinTitle = "TmplMgmt_WinTitle";
     public const string ResHeader = "TmplMgmt_Header";
     public const string ResTemplateList = "TmplMgmt_TemplateList";
+    public const string ResSortByName = "TmplMgmt_SortByName";
+    public const string ResSortByUsage = "TmplMgmt_SortByUsage";
     public const string ResDetailTitle = "TmplMgmt_DetailTitle";
     public const string ResFldName = "Fld_Name";
     public const string ResFldProtocol = "Fld_Protocol";
@@ -37,29 +39,44 @@ public partial class TemplateManagementWindow : Window
     private readonly AssetStore _assetStore;
     private AssetStoreData _data;
     private List<TemplateDisplayItem> _displayItems = new();
+    private bool _uiReady;
 
     public TemplateManagementWindow(AssetStore assetStore)
     {
         InitializeComponent();
         _assetStore = assetStore;
         _data = _assetStore.Load();
+        _uiReady = true;
+        CmbTemplateSort.SelectedIndex = 0; // 默认按名称排序
         LoadTemplates();
     }
 
     private void LoadTemplates()
     {
         var usageCount = CalculateUsageCount();
-        _displayItems = _data.Templates.Select(t => new TemplateDisplayItem
+        var selectedId = (LstTemplates.SelectedItem as TemplateDisplayItem)?.Template.Id;
+
+        IEnumerable<TemplateDisplayItem> items = _data.Templates.Select(t => new TemplateDisplayItem
         {
             Template = t,
             UsageCount = usageCount.GetValueOrDefault(t.Id, 0)
-        }).ToList();
+        });
 
+        items = CmbTemplateSort?.SelectedIndex == 1
+            ? items.OrderByDescending(i => i.UsageCount).ThenBy(i => i.Template.Name, StringComparer.CurrentCulture)
+            : items.OrderBy(i => i.Template.Name, StringComparer.CurrentCulture);
+
+        _displayItems = items.ToList();
         LstTemplates.ItemsSource = _displayItems;
-        if (_displayItems.Count > 0)
-        {
-            LstTemplates.SelectedIndex = 0;
-        }
+
+        var toSelect = selectedId.HasValue ? _displayItems.FirstOrDefault(i => i.Template.Id == selectedId.Value) : null;
+        LstTemplates.SelectedItem = toSelect ?? (_displayItems.Count > 0 ? _displayItems[0] : null);
+    }
+
+    private void CmbTemplateSort_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_uiReady) return;
+        LoadTemplates();
     }
 
     private Dictionary<Guid, int> CalculateUsageCount()

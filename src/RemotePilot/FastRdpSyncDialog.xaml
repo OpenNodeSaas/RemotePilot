@@ -37,9 +37,9 @@
 
             <!-- 资产预览列表 -->
             <TextBlock Text="{DynamicResource {x:Static local:FastRdpSyncDialog.ResSyncPreview}}" Margin="0,10,0,4" FontWeight="SemiBold"/>
-            <DataGrid x:Name="GridPreview" Height="150" AutoGenerateColumns="False" CanUserAddRows="False" SelectionMode="Extended">
+            <DataGrid x:Name="GridPreview" Height="150" AutoGenerateColumns="False" CanUserAddRows="False" SelectionMode="Extended" CanUserSortColumns="True">
                 <DataGrid.Columns>
-                    <DataGridCheckBoxColumn Header="{Binding [Sync_ColImport], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
+                    <DataGridCheckBoxColumn Header="{Binding [Sync_ColImport], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" CanUserSort="False"/>
                     <DataGridTextColumn Header="{Binding [Sync_ColName], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Name}" IsReadOnly="True"/>
                     <DataGridTextColumn Header="{Binding [Sync_ColHost], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Host}" IsReadOnly="True"/>
                 </DataGrid.Columns>

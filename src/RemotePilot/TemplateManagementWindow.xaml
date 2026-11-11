@@ -30,8 +30,13 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="{DynamicResource {x:Static local:TemplateManagementWindow.ResTemplateList}}" 
-                               FontWeight="SemiBold" Margin="8,8,8,6"/>
+                    <Grid Grid.Row="0" Margin="8,8,8,6">
+                        <TextBlock Text="{DynamicResource {x:Static local:TemplateManagementWindow.ResTemplateList}}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,150,0"/>
+                        <ComboBox x:Name="CmbTemplateSort" Width="130" HorizontalAlignment="Right" VerticalAlignment="Center" SelectionChanged="CmbTemplateSort_SelectionChanged">
+                            <ComboBoxItem Content="{DynamicResource {x:Static local:TemplateManagementWindow.ResSortByName}}"/>
+                            <ComboBoxItem Content="{DynamicResource {x:Static local:TemplateManagementWindow.ResSortByUsage}}"/>
+                        </ComboBox>
+                    </Grid>
                     <ListBox x:Name="LstTemplates" Grid.Row="1" 
                              SelectionMode="Single" 
                              SelectionChanged="LstTemplates_SelectionChanged"

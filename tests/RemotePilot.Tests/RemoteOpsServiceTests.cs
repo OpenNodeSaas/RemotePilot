@@ -66,7 +66,7 @@ public class RemoteOpsServiceTests
         Assert.Contains("desktopwidth:i:1920", content);
         Assert.Contains("desktopheight:i:1080", content);
         Assert.Contains("session bpp:i:32", content);
-        Assert.Contains("drivestoredirect:i:1", content);
+        Assert.Contains("drivestoredirect:s:*", content);
         Assert.Contains("audiomode:i:2", content);
         Assert.Contains("redirectclipboard:i:1", content);
         Assert.Contains("prompt for credentials:i:1", content);

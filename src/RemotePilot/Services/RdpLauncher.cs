@@ -52,8 +52,6 @@ public static class RdpLauncher
         // screen mode id: 1 for windowed, 2 for full screen. Default 1 (windowed with width/height)
         int screenModeId = 1;
 
-        // drivestoredirect: i:1 enables drive redirection, i:0 disables
-        int driveStoreRedirectInt = redirectDrives ? 1 : 0;
         // audiomode: 0 = bring to this computer, 1 = leave at remote computer, 2 = do not play
         int audioModeInt = redirectAudio ? 0 : 2;
         // redirectclipboard: i:1 enabled, i:0 disabled
@@ -70,9 +68,21 @@ public static class RdpLauncher
         sb.AppendLine($"desktopwidth:i:{width}");
         sb.AppendLine($"desktopheight:i:{height}");
         sb.AppendLine($"session bpp:i:{colorDepth}");
-        sb.AppendLine($"drivestoredirect:i:{driveStoreRedirectInt}");
-        sb.AppendLine($"audiomode:i:{audioModeInt}");
+
+        // 设备重定向：显式输出所有相关键，避免 mstsc 用默认值覆盖
         sb.AppendLine($"redirectclipboard:i:{redirectClipboardInt}");
+        if (redirectDrives)
+        {
+            sb.AppendLine("drivestoredirect:s:*");
+        }
+        // 其他设备默认不重定向，显式写出防止 mstsc 沿用上次连接的缓存
+        sb.AppendLine("redirectcomports:i:0");
+        sb.AppendLine("redirectprinters:i:0");
+        sb.AppendLine("redirectsmartcards:i:0");
+        sb.AppendLine("redirectposdevices:i:0");
+
+        sb.AppendLine($"audiomode:i:{audioModeInt}");
+        sb.AppendLine("audiocapturemode:i:0");
         // 有记住的密码时直接写入 .rdp 并关闭凭据提示，实现免输入登录
         if (!string.IsNullOrEmpty(password))
         {
@@ -96,11 +106,35 @@ public static class RdpLauncher
         return sb.ToString();
     }
 
+    /// <summary>mstsc 窗口标题取自 .rdp 文件名，这里生成「资产名称 (主机地址).rdp」。</summary>
+    private static string BuildRdpFileName(ServerAsset asset)
+    {
+        var name = StripInvalidFileNameChars(asset.Name);
+        var host = StripInvalidFileNameChars(asset.Host);
+        var label = name.Length == 0 || name == host ? host : $"{name} ({host})";
+        return $"{label}.rdp";
+    }
+
+    private static string StripInvalidFileNameChars(string input)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var sb = new StringBuilder(input.Length);
+        foreach (var ch in input.Trim())
+        {
+            if (Array.IndexOf(invalid, ch) < 0) sb.Append(ch);
+        }
+        return sb.ToString();
+    }
+
     public static string CreateTempRdpFile(ServerAsset asset, ConnectionTemplate? template = null, string? password = null)
     {
         var content = GenerateRdpContent(asset, template, password);
-        var tempFilePath = Path.Combine(Path.GetTempPath(), $"remotepilot_{Guid.NewGuid():N}.rdp");
-        File.WriteAllText(tempFilePath, content, Encoding.UTF8);
+        // 每次连接使用独立子目录：文件名保持可读，同时不覆盖上一次可能仍被 mstsc 占用的文件
+        var dir = Path.Combine(Path.GetTempPath(), "RemotePilot", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var tempFilePath = Path.Combine(dir, BuildRdpFileName(asset));
+        // mstsc 原生以 UTF-16LE（含 BOM）读写 .rdp，用 UTF-8 会导致中文主机名在标题栏乱码
+        File.WriteAllText(tempFilePath, content, Encoding.Unicode);
         return tempFilePath;
     }
 
@@ -121,10 +155,7 @@ public static class RdpLauncher
         }
         catch
         {
-            if (File.Exists(tempFilePath))
-            {
-                try { File.Delete(tempFilePath); } catch { }
-            }
+            try { Directory.Delete(Path.GetDirectoryName(tempFilePath)!, true); } catch { }
             throw;
         }
     }

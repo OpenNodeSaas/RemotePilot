@@ -146,6 +146,28 @@ public class AssetCsvExportTests
     }
 
     [Fact]
+    public void SshKeyPath_NotSelected_HeaderUnchanged()
+    {
+        var csv = AssetCsvService.ExportCsv([SampleAsset()], new ExportFieldSelection());
+        var header = GetLines(csv)[0];
+
+        Assert.Equal(DefaultHeader, header);
+        Assert.DoesNotContain("密钥路径", header);
+    }
+
+    [Fact]
+    public void SshKeyPath_Selected_ColumnPresentWithValue()
+    {
+        var asset = SampleAsset() with { SshKeyPath = "/home/u/.ssh/id_rsa" };
+
+        var csv = AssetCsvService.ExportCsv([asset], new ExportFieldSelection { SshKeyPath = true });
+        var lines = GetLines(csv);
+
+        Assert.Contains("密钥路径", lines[0]);
+        Assert.Contains("\"/home/u/.ssh/id_rsa\"", lines[1]);
+    }
+
+    [Fact]
     public void LineCount_EqualsAssetCountPlusHeader()
     {
         var assets = new[]
