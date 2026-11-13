@@ -230,4 +230,251 @@ public class AssetStoreTests
             }
         }
     }
+
+    [Fact]
+    public void TestAssetListPreferencesRoundTrip()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var store = new AssetStore(tempFile);
+            var data = new AssetStoreData
+            {
+                AssetListHiddenColumns = ["Note1", "Owner"],
+                AssetListColumnOrder = ["Name", "Action", "Favorite"],
+                AssetListFontSize = 16
+            };
+
+            store.Save(data);
+
+            var loaded = store.Load();
+            Assert.Equal(new List<string> { "Note1", "Owner" }, loaded.AssetListHiddenColumns);
+            Assert.Equal(new List<string> { "Name", "Action", "Favorite" }, loaded.AssetListColumnOrder);
+            Assert.Equal(16, loaded.AssetListFontSize);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public void TestAssetListColumnsWhitelistFiltering()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var store = new AssetStore(tempFile);
+            var data = new AssetStoreData
+            {
+                AssetListHiddenColumns = ["Note1", "NotAColumn", "", "Note1", "Owner"],
+                AssetListColumnOrder = ["Name", "Bogus", "Name", "Action"]
+            };
+
+            store.Save(data);
+
+            var loaded = store.Load();
+            Assert.Equal(new List<string> { "Note1", "Owner" }, loaded.AssetListHiddenColumns);
+            Assert.Equal(new List<string> { "Name", "Action" }, loaded.AssetListColumnOrder);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public void TestAssetListPreferencesForwardCompatibleWithLegacyJson()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "{\"Version\":1,\"Assets\":[],\"Templates\":[],\"ExpiryLeadDays\":30}");
+            var store = new AssetStore(tempFile);
+
+            var loaded = store.Load();
+
+            Assert.Empty(loaded.AssetListHiddenColumns);
+            Assert.Empty(loaded.AssetListColumnOrder);
+            Assert.Equal(14, loaded.AssetListFontSize);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(8.0, 14.0)]
+    [InlineData(30.0, 14.0)]
+    [InlineData(12.0, 12.0)]
+    public void TestAssetListFontSizeOutOfRangeFallsBackToDefault(double saved, double expected)
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var store = new AssetStore(tempFile);
+
+            store.Save(new AssetStoreData { AssetListFontSize = saved });
+
+            Assert.Equal(expected, store.Load().AssetListFontSize);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public void TestLoadMissingFileReturnsDefaultPreferences()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "assets.json");
+        var store = new AssetStore(tempFile);
+
+        var loaded = store.Load();
+
+        Assert.Empty(loaded.AssetListHiddenColumns);
+        Assert.Empty(loaded.AssetListColumnOrder);
+        Assert.Equal(14, loaded.AssetListFontSize);
+    }
+
+    [Fact]
+    public void TestSshPreferencesRoundTrip()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var store = new AssetStore(tempFile);
+            store.Save(new AssetStoreData
+            {
+                SshStandaloneWindow = true,
+                SshTerminalFontSize = 16,
+                SshTerminalScheme = 2
+            });
+
+            var loaded = store.Load();
+            Assert.True(loaded.SshStandaloneWindow);
+            Assert.Equal(16, loaded.SshTerminalFontSize);
+            Assert.Equal(2, loaded.SshTerminalScheme);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public void TestSshPreferencesOutOfRangeFallsBackToDefaults()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var store = new AssetStore(tempFile);
+            store.Save(new AssetStoreData
+            {
+                SshTerminalFontSize = 100,
+                SshTerminalScheme = 99
+            });
+
+            var loaded = store.Load();
+            Assert.Equal(13, loaded.SshTerminalFontSize);
+            Assert.Equal(0, loaded.SshTerminalScheme);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public void TestSshPreferencesForwardCompatibleWithLegacyJson()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "{\"Version\":1,\"Assets\":[],\"Templates\":[],\"ExpiryLeadDays\":30}");
+            var store = new AssetStore(tempFile);
+
+            var loaded = store.Load();
+
+            Assert.False(loaded.SshStandaloneWindow);
+            Assert.Equal(13, loaded.SshTerminalFontSize);
+            Assert.Equal(0, loaded.SshTerminalScheme);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(9.0, 9.0)]
+    [InlineData(28.0, 28.0)]
+    [InlineData(8.0, 13.0)]
+    [InlineData(29.0, 13.0)]
+    public void TestSshTerminalFontSizeBoundaryFallsBackToDefault(double saved, double expected)
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var store = new AssetStore(tempFile);
+
+            store.Save(new AssetStoreData { SshTerminalFontSize = saved });
+
+            Assert.Equal(expected, store.Load().SshTerminalFontSize);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(2, 2)]
+    [InlineData(-1, 0)]
+    [InlineData(3, 0)]
+    public void TestSshTerminalSchemeOutOfRangeFallsBackToDefault(int saved, int expected)
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var store = new AssetStore(tempFile);
+
+            store.Save(new AssetStoreData { SshTerminalScheme = saved });
+
+            Assert.Equal(expected, store.Load().SshTerminalScheme);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
 }

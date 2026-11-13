@@ -183,6 +183,13 @@ public partial class ConnectionSettingsDrawer : UserControl
             TxtSshUsername.Text = asset.Username;
             TxtSshKeyPath.Text = asset.SshKeyPath ?? string.Empty;
         }
+        else if (asset.Protocol.Equals("vnc", StringComparison.OrdinalIgnoreCase))
+        {
+            // VNC 连接参数由外装客户端决定，这里不提供 RDP/SSH 专属项
+            PanelRdpOnly.Visibility = Visibility.Collapsed;
+            PanelRdpSpecific.Visibility = Visibility.Collapsed;
+            PanelSshSpecific.Visibility = Visibility.Collapsed;
+        }
         else
         {
             PanelRdpOnly.Visibility = Visibility.Visible;
@@ -227,6 +234,12 @@ public partial class ConnectionSettingsDrawer : UserControl
             TxtSshPort.Text = template.Port.ToString();
             TxtSshUsername.Text = template.Username;
             TxtSshKeyPath.Text = template.SshKeyPath ?? string.Empty;
+        }
+        else if (template.Protocol.Equals("vnc", StringComparison.OrdinalIgnoreCase))
+        {
+            PanelRdpOnly.Visibility = Visibility.Collapsed;
+            PanelRdpSpecific.Visibility = Visibility.Collapsed;
+            PanelSshSpecific.Visibility = Visibility.Collapsed;
         }
         else
         {

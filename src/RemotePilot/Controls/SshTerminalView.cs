@@ -16,14 +16,25 @@ namespace RemotePilot.Controls
     /// </summary>
     public class SshTerminalView : Grid
     {
-        private const double MinFontSize = 9;
-        private const double MaxFontSize = 28;
+        /// <summary>终端字号可选范围（供设置页使用）。</summary>
+        public const double MinFontSize = 9;
+        public const double MaxFontSize = 28;
 
         private static readonly string[] SchemeNames = { "Term_SchemeDark", "Term_SchemeGreen", "Term_SchemeLight" };
+
+        /// <summary>配色方案档位数（供设置页使用）。</summary>
+        public static int SchemeCount => SchemeNames.Length;
 
         // 所有终端会话共享字体与配色设置
         private static double _fontSize = 13;
         private static int _schemeIndex;
+
+        /// <summary>设置新终端会话的默认字号与配色档位（由设置页在保存时调用）。</summary>
+        public static void SetDefaults(double fontSize, int schemeIndex)
+        {
+            _fontSize = Math.Clamp(fontSize, MinFontSize, MaxFontSize);
+            _schemeIndex = Math.Clamp(schemeIndex, 0, SchemeNames.Length - 1);
+        }
 
         private readonly TerminalControl _terminal;
         private readonly Border _statusBar;

@@ -31,6 +31,7 @@ public sealed record ExportFieldSelection
     public bool Note1 { get; init; } = true;
     public bool Note2 { get; init; } = true;
     public bool Note3 { get; init; } = true;
+    public bool Note4 { get; init; } = true;
     public bool Protocol { get; init; } = true;
     public bool Port { get; init; } = true;
 }
@@ -146,6 +147,7 @@ public static class AssetCsvService
         if (fields.Note1) columns.Add(("其他备注1", a => SanitizeForCsv(a.CustomNote1)));
         if (fields.Note2) columns.Add(("其他备注2", a => SanitizeForCsv(a.CustomNote2)));
         if (fields.Note3) columns.Add(("其他备注3", a => SanitizeForCsv(a.CustomNote3)));
+        if (fields.Note4) columns.Add(("其他备注4", a => SanitizeForCsv(a.CustomNote4)));
         if (fields.Protocol) columns.Add(("协议", a => SanitizeForCsv(a.Protocol)));
         if (fields.Port) columns.Add(("端口", a => SanitizeForCsv(a.Port.ToString())));
 
@@ -308,6 +310,7 @@ public static class AssetCsvService
         var note1 = GetField("其他备注1", "备注1", "备1", "Note1", "CustomNote1");
         var note2 = GetField("其他备注2", "备注2", "备2", "Note2", "CustomNote2");
         var note3 = GetField("其他备注3", "备注3", "备3", "Note3", "CustomNote3");
+        var note4 = GetField("其他备注4", "备注4", "备4", "Note4", "CustomNote4");
         var protocol = GetField("协议", "Protocol");
         var portStr = GetField("端口", "Port");
 
@@ -389,6 +392,7 @@ public static class AssetCsvService
             CustomNote1 = note1.Trim(),
             CustomNote2 = note2.Trim(),
             CustomNote3 = note3.Trim(),
+            CustomNote4 = note4.Trim(),
             // 仅在内存中携带，落盘与否由调用方按“本机记住密码”决定
             Password = string.IsNullOrWhiteSpace(password) ? null : password.Trim()
         };

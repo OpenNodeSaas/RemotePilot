@@ -1,0 +1,18 @@
+<UserControl x:Class="RemotePilot.Controls.HelpManualView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:RemotePilot.Controls"
+             Background="{DynamicResource SurfaceBackground}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+        <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+            <TextBlock Text="{DynamicResource {x:Static local:HelpManualView.ResTitle}}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource AppForeground}" Margin="0,0,0,4"/>
+            <TextBlock x:Name="TxtSubtitle" FontSize="12" Foreground="{DynamicResource MutedForeground}" TextWrapping="Wrap" Margin="0,0,0,18"/>
+
+            <!-- VNC 客户端配置已迁移到左侧导航的「设置」页 -->
+            <TextBlock x:Name="TxtVncMoved" Foreground="{DynamicResource MutedForeground}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,18"/>
+
+            <!-- 疑点与说明章节由代码按当前语言生成 -->
+            <StackPanel x:Name="PanelSections"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

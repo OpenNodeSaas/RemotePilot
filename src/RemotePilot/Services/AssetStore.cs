@@ -20,6 +20,20 @@ public sealed record AssetStoreData
 
     // 左侧导航是否处于折叠（图标条）状态
     public bool IsLeftNavCollapsed { get; init; }
+
+    // 外装 VNC 客户端：可执行文件路径与启动参数模板；留空时按常见安装位置与 PATH 自动探测
+    public string VncViewerPath { get; init; } = "";
+    public string VncArgumentTemplate { get; init; } = "";
+
+    // 资产列表（表视图）展示偏好：隐藏列 key、列显示顺序 key、行字号
+    public List<string> AssetListHiddenColumns { get; init; } = [];
+    public List<string> AssetListColumnOrder { get; init; } = [];
+    public double AssetListFontSize { get; init; } = 14;
+
+    // SSH 相关本地偏好：是否以独立窗口打开 SSH 会话、终端默认字号、终端配色方案档位
+    public bool SshStandaloneWindow { get; init; }
+    public double SshTerminalFontSize { get; init; } = 13;
+    public int SshTerminalScheme { get; init; }
 }
 
 public sealed class AssetStore
@@ -99,6 +113,32 @@ public sealed class AssetStore
                 validTemplates.Add(tmpl);
             }
 
+            // 列 key 白名单：过滤掉不认识/重复的列 key
+            var validColumnKeys = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "Favorite", "Select", "Group", "Owner", "Name", "IpPort", "Username",
+                "Status", "ExpiresOn", "Note1", "Note2", "Note3", "Note4", "Template", "Protocol", "Action"
+            };
+
+            static List<string> SanitizeColumns(IEnumerable<string>? keys, HashSet<string> whitelist)
+            {
+                var result = new List<string>();
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                if (keys == null)
+                {
+                    return result;
+                }
+
+                foreach (var key in keys)
+                {
+                    if (string.IsNullOrEmpty(key) || !whitelist.Contains(key) || !seen.Add(key))
+                        continue;
+                    result.Add(key);
+                }
+
+                return result;
+            }
+
             return new AssetStoreData
             {
                 Version = data.Version > 0 ? data.Version : 1,
@@ -107,7 +147,15 @@ public sealed class AssetStore
                 ExpiryLeadDays = data.ExpiryLeadDays > 0 ? data.ExpiryLeadDays : 30,
                 RememberPassword = data.RememberPassword,
                 AssetApiUrl = data.AssetApiUrl ?? "",
-                IsLeftNavCollapsed = data.IsLeftNavCollapsed
+                IsLeftNavCollapsed = data.IsLeftNavCollapsed,
+                VncViewerPath = data.VncViewerPath ?? "",
+                VncArgumentTemplate = data.VncArgumentTemplate ?? "",
+                AssetListHiddenColumns = SanitizeColumns(data.AssetListHiddenColumns, validColumnKeys),
+                AssetListColumnOrder = SanitizeColumns(data.AssetListColumnOrder, validColumnKeys),
+                AssetListFontSize = (data.AssetListFontSize >= 10 && data.AssetListFontSize <= 24) ? data.AssetListFontSize : 14,
+                SshStandaloneWindow = data.SshStandaloneWindow,
+                SshTerminalFontSize = (data.SshTerminalFontSize >= 9 && data.SshTerminalFontSize <= 28) ? data.SshTerminalFontSize : 13,
+                SshTerminalScheme = (data.SshTerminalScheme >= 0 && data.SshTerminalScheme <= 2) ? data.SshTerminalScheme : 0
             };
         }
         catch

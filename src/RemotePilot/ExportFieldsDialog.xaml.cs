@@ -17,6 +17,7 @@ public partial class ExportFieldsDialog : Window
     public const string ResNote1 = "Col_Note1";
     public const string ResNote2 = "Col_Note2";
     public const string ResNote3 = "Col_Note3";
+    public const string ResNote4 = "Col_Note4";
     public const string ResProtocol = "Col_Protocol";
     public const string ResPort = "Insp_Port";
     public const string ResSshKeyPath = "Col_SshKeyPath";
@@ -45,6 +46,7 @@ public partial class ExportFieldsDialog : Window
             Note1 = ChkNote1.IsChecked == true,
             Note2 = ChkNote2.IsChecked == true,
             Note3 = ChkNote3.IsChecked == true,
+            Note4 = ChkNote4.IsChecked == true,
             Protocol = ChkProtocol.IsChecked == true,
             Port = ChkPort.IsChecked == true,
             SshKeyPath = ChkSshKeyPath.IsChecked == true,

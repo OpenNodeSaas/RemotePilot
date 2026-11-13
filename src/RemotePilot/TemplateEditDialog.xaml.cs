@@ -79,11 +79,13 @@ public partial class TemplateEditDialog : Window
 
         var proto = (CmbProtocol.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "rdp";
         var isSsh = proto.Equals("ssh", StringComparison.OrdinalIgnoreCase);
-        PanelRdpSettings.Visibility = isSsh ? Visibility.Collapsed : Visibility.Visible;
+        var isVnc = proto.Equals("vnc", StringComparison.OrdinalIgnoreCase);
+        // VNC 不使用 RDP 的分辨率/网关/重定向
+        PanelRdpSettings.Visibility = isSsh || isVnc ? Visibility.Collapsed : Visibility.Visible;
 
         var port = TxtPort.Text.Trim();
-        if (port.Length == 0 || port == "3389" || port == "22")
-            TxtPort.Text = isSsh ? "22" : "3389";
+        if (port.Length == 0 || port == "3389" || port == "22" || port == "5900")
+            TxtPort.Text = isSsh ? "22" : (isVnc ? "5900" : "3389");
     }
 
     private void BtnOk_Click(object sender, RoutedEventArgs e)

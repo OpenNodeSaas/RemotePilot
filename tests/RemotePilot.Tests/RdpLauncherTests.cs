@@ -129,4 +129,67 @@ public class RdpLauncherTests
             Directory.Delete(Path.GetDirectoryName(path)!, true);
         }
     }
+
+    [Fact]
+    public void RedirectClipboard_UnsetAndNoTemplate_DefaultsToOne()
+    {
+        var asset = SampleAsset();
+
+        var content = RdpLauncher.GenerateRdpContent(asset);
+
+        Assert.Contains("redirectclipboard:i:1", content);
+    }
+
+    [Fact]
+    public void RedirectClipboard_UnsetButTemplateEnabled_UsesTemplateValue()
+    {
+        var asset = SampleAsset();
+        var template = new ConnectionTemplate { RedirectClipboard = true };
+
+        var content = RdpLauncher.GenerateRdpContent(asset, template);
+
+        Assert.Contains("redirectclipboard:i:1", content);
+    }
+
+    [Fact]
+    public void RedirectClipboard_AssetDisabledOverridesEnabledTemplate()
+    {
+        var asset = SampleAsset() with { RedirectClipboard = false };
+        var template = new ConnectionTemplate { RedirectClipboard = true };
+
+        var content = RdpLauncher.GenerateRdpContent(asset, template);
+
+        Assert.Contains("redirectclipboard:i:0", content);
+    }
+
+    [Fact]
+    public void RedirectClipboard_AssetEnabledOverridesDisabledTemplate()
+    {
+        var asset = SampleAsset() with { RedirectClipboard = true };
+        var template = new ConnectionTemplate { RedirectClipboard = false };
+
+        var content = RdpLauncher.GenerateRdpContent(asset, template);
+
+        Assert.Contains("redirectclipboard:i:1", content);
+    }
+
+    [Fact]
+    public void RedirectDrives_UnsetAndNoTemplate_OmitsKey()
+    {
+        var asset = SampleAsset();
+
+        var content = RdpLauncher.GenerateRdpContent(asset);
+
+        Assert.DoesNotContain("drivestoredirect", content);
+    }
+
+    [Fact]
+    public void RedirectAudio_UnsetAndNoTemplate_DefaultsToEnabled()
+    {
+        var asset = SampleAsset();
+
+        var content = RdpLauncher.GenerateRdpContent(asset);
+
+        Assert.Contains("audiomode:i:0", content);
+    }
 }

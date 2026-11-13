@@ -12,6 +12,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using RemotePilot.Models;
+using RemotePilot.Controls;
 using RemotePilot.Services;
 using RemotePilot.ViewModels;
 using Microsoft.Win32;
@@ -57,6 +58,7 @@ public class ServerAssetViewModel : INotifyPropertyChanged
     public string CustomNote1 => Model.CustomNote1;
     public string CustomNote2 => Model.CustomNote2;
     public string CustomNote3 => Model.CustomNote3;
+    public string CustomNote4 => Model.CustomNote4;
     public string FavoriteGlyph => Model.IsFavorite ? "★" : "☆";
     public Brush FavoriteBrush => new SolidColorBrush((Color)ColorConverter.ConvertFromString(Model.IsFavorite ? "#D4A72C" : "#8B949E"));
 
@@ -186,6 +188,11 @@ public partial class MainWindow : Window
     private bool _rememberPassword;
     private bool _suppressRememberToggle;
     private string _assetApiUrl = "";
+    /// <summary>外装 VNC 客户端路径与启动参数模板（留空即按常见安装位置自动探测）。</summary>
+    private string _vncViewerPath = "";
+    private string _vncArgumentTemplate = "";
+    /// <summary>SSH 是否以独立窗口打开（来自设置页，持久化）。</summary>
+    private bool _sshStandaloneWindow;
     private bool _isWorkspaceFullscreen;
     private bool _detailsWasVisibleBeforeFullscreen;
     private WindowState _windowStateBeforeFullscreen = WindowState.Normal;
@@ -195,13 +202,19 @@ public partial class MainWindow : Window
     private const double LeftNavCollapsedWidth = 56;
     /// <summary>抑制表头三态/计数联动，避免程序化改选时事件递归。</summary>
     private bool _suppressSelectAllSync;
-    /// <summary>顶栏「设备重定向」是否被用户主动改动过；改动后作为本次连接的显式覆盖。</summary>
-    private bool _redirectToolbarTouched;
+    /// <summary>顶栏「设备重定向」三项是否分别被用户主动改动过；改动后作为本次连接的显式覆盖（逐项独立）。</summary>
+    private bool _driveToolbarTouched;
+    private bool _audioToolbarTouched;
+    private bool _clipboardToolbarTouched;
+    /// <summary>本次运行是否已展示过「剪贴板需在安全对话框中再确认」的一次性状态栏提示。</summary>
+    private bool _clipboardHintShown;
+    /// <summary>用户本次运行是否勾选过顶栏「剪贴板」；仅勾选后才需要展示该提示。</summary>
+    private bool _clipboardHintArmed;
 
     /// <summary>已就认证失败弹过一次凭据补录的资产，避免同一会话反复弹窗（每个资产仅提示一次）。</summary>
     private readonly HashSet<Guid> _authRetryPrompted = [];
 
-    private enum NavMode { Assets, Sessions, Favorites, Recent, Groups }
+    private enum NavMode { Assets, Sessions, Favorites, Recent, Groups, Templates, Help, Settings }
 
     // Localization Keys
     public const string ResNavAssets = "Nav_Assets";
@@ -209,6 +222,9 @@ public partial class MainWindow : Window
     public const string ResNavFavorites = "Nav_Favorites";
     public const string ResNavRecent = "Nav_Recent";
     public const string ResNavGroups = "Nav_Groups";
+    public const string ResNavHelp = "Nav_Help";
+    public const string ResNavTemplates = "Nav_Templates";
+    public const string ResNavSettings = "Nav_Settings";
     public const string ResNavFeedback = "Nav_Feedback";
     public const string ResBtnToggleLeftNav = "Btn_ToggleLeftNav";
     public const string ResBtnToggleLeftNavExpand = "Btn_ToggleLeftNavExpand";
@@ -228,7 +244,6 @@ public partial class MainWindow : Window
     public const string ResLangToggle = "Lang_Toggle";
     public const string ResBtnViewTable = "Btn_ViewTable";
     public const string ResBtnViewGrid = "Btn_ViewGrid";
-    public const string ResBtnOpenDrawer = "Btn_OpenDrawer";
     public const string ResBtnEdit = "Btn_Edit";
     public const string ResBtnRemove = "Btn_Remove";
     public const string ResBtnQuickConnect = "Btn_QuickConnect";
@@ -276,12 +291,26 @@ public partial class MainWindow : Window
     public const string ResSettingRememberPassword = "Setting_RememberPassword";
     public const string ResSettingRememberPasswordHint = "Setting_RememberPasswordHint";
     public const string ResStatusReady = "Status_Ready";
+    public const string ResBtnColumnSettings = "Btn_ColumnSettings";
+    public const string ResColSettingsTitle = "ColSettings_Title";
+    public const string ResColSettingsHint = "ColSettings_Hint";
+    public const string ResColSettingsFontSize = "ColSettings_FontSize";
+    public const string ResColSettingsMoveUp = "ColSettings_MoveUp";
+    public const string ResColSettingsMoveDown = "ColSettings_MoveDown";
+    public const string ResFontSizeSmall = "FontSize_Small";
+    public const string ResFontSizeNormal = "FontSize_Normal";
+    public const string ResFontSizeLarge = "FontSize_Large";
+    public const string ResFontSizeXLarge = "FontSize_XLarge";
 
     private static LocalizationManager L10n => LocalizationManager.Instance;
 
     public MainWindow()
     {
         InitializeComponent();
+
+        // 模板管理视图：关闭时回到资产中心；数据变更后刷新资产列表（资产可能引用模板）
+        TemplateManagement.CloseRequested += () => NavBtnAssets_Click(this, new RoutedEventArgs());
+        TemplateManagement.DataChanged += () => { LoadAssetsFromStore(); ApplyFilter(); };
 
         // 顶栏「设备重定向」被用户主动改动后，作为本次连接的显式覆盖
         ChkDriveMap.Checked += RedirectToolbar_Changed;
@@ -290,6 +319,8 @@ public partial class MainWindow : Window
         ChkAudio.Unchecked += RedirectToolbar_Changed;
         ChkClipboard.Checked += RedirectToolbar_Changed;
         ChkClipboard.Unchecked += RedirectToolbar_Changed;
+        // 勾选剪贴板后才需要提示「Windows 安全对话框中还需再勾一次」（XAML 初始未勾选，不会误触发）
+        ChkClipboard.Checked += (s, e) => _clipboardHintArmed = true;
 
         _assetStore = new AssetStore();
         _probe = new ReachabilityProbe(10);
@@ -297,6 +328,9 @@ public partial class MainWindow : Window
 
         GridAssets.ItemsSource = _viewAssets;
         ItemsCardsGrid.ItemsSource = _viewAssets;
+
+        // 恢复资产列表的列显隐 / 顺序 / 字号偏好
+        ApplyAssetListPreferences();
 
         ThemeManager.Instance.ThemeChanged += (s, e) => {
             foreach (var vm in _allAssets)
@@ -310,6 +344,8 @@ public partial class MainWindow : Window
             foreach (var vm in _allAssets) vm.NotifyLanguageChanged();
             ApplyFilter();
             BtnToggleLeftNav.ToolTip = L10n[_leftNavCollapsed ? "Tip_ExpandLeftNav" : "Tip_CollapseLeftNav"];
+            // 列设置面板若处于打开状态，重建以刷新文案
+            if (PopupColumnSettings.IsOpen) BuildColumnSettingsPanel();
         };
 
         LoadAssetsFromStore();
@@ -352,6 +388,29 @@ public partial class MainWindow : Window
 
         SessionWorkspace.RequestFullscreenToggle += ToggleWorkspaceFullscreen;
         SessionWorkspace.SessionConnectFailed += OnSessionConnectFailed;
+
+        // 设置页保存：VNC 客户端 + SSH 终端外观，写入内存后同步到工作台/新会话并落盘
+        SettingsView.Saved += () =>
+        {
+            _vncViewerPath = SettingsView.VncViewerPath;
+            _vncArgumentTemplate = SettingsView.VncArgumentTemplate;
+            _sshStandaloneWindow = SettingsView.SshStandaloneWindow;
+            ApplyVncSettings();
+
+            SshTerminalView.SetDefaults(SettingsView.SshFontSize, SettingsView.SshSchemeIndex);
+
+            var data = _assetStore.Load();
+            _assetStore.Save(data with
+            {
+                VncViewerPath = _vncViewerPath,
+                VncArgumentTemplate = _vncArgumentTemplate,
+                SshTerminalFontSize = SettingsView.SshFontSize,
+                SshTerminalScheme = SettingsView.SshSchemeIndex,
+                SshStandaloneWindow = SettingsView.SshStandaloneWindow
+            });
+
+            MessageBox.Show(L10n["Settings_Saved"], L10n["Msg_Tip"], MessageBoxButton.OK, MessageBoxImage.Information);
+        };
     }
 
     /// <summary>全屏只保留会话工作台：左侧导航、顶部三栏、右侧详情面板全部隐藏，退出时精确恢复原始状态。</summary>
@@ -403,19 +462,6 @@ public partial class MainWindow : Window
             SessionWorkspace.SetFullscreenState(false);
             TxtStatusBarInfo.Text = L10n["Status_ExitFullscreen"];
         }
-    }
-
-    private void BtnOpenSettingsDrawer_Click(object sender, RoutedEventArgs e)
-    {
-        var target = _viewAssets.FirstOrDefault(a => a.IsSelected) ?? (GridAssets.SelectedItem as ServerAssetViewModel);
-        if (target == null)
-        {
-            MessageBox.Show(L10n["Msg_SelectAssetForDrawer"], L10n["Msg_Tip"], MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        var storeData = _assetStore.Load();
-        SettingsDrawer.BindAsset(target.Model, storeData.Templates);
     }
 
     private void BtnTemplateName_Click(object sender, RoutedEventArgs e)
@@ -512,12 +558,13 @@ public partial class MainWindow : Window
         TxtNavRecentLabel.Visibility = textVis;
         TxtNavGroupsLabel.Visibility = textVis;
         TxtNavGroupsChevron.Visibility = textVis;
+        TxtNavTemplatesLabel.Visibility = textVis;
 
         if (collapsed) PanelNavGroups.Visibility = Visibility.Collapsed;
 
         var align = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Left;
         var padding = collapsed ? new Thickness(0, 14, 0, 14) : new Thickness(14, 14, 14, 14);
-        foreach (var btn in new[] { NavBtnAssets, NavBtnSessions, NavBtnFavorites, NavBtnRecent })
+        foreach (var btn in new[] { NavBtnAssets, NavBtnSessions, NavBtnFavorites, NavBtnRecent, NavBtnTemplates })
         {
             btn.HorizontalContentAlignment = align;
             btn.Padding = padding;
@@ -539,10 +586,254 @@ public partial class MainWindow : Window
         _assetStore.Save(data with { IsLeftNavCollapsed = collapsed });
     }
 
+    // ===== 资产列表（表视图）展示偏好：列显隐 / 列顺序 / 行字号 =====
+
+    /// <summary>列 key 数组，顺序与 XAML 中 <c>GridAssets.Columns</c> 的默认顺序一致。</summary>
+    private static readonly string[] AssetListColumnKeys =
+        ["Favorite", "Select", "Group", "Owner", "Name", "IpPort", "Username", "Status", "ExpiresOn", "Note1", "Note2", "Note3", "Note4", "Template", "Protocol", "Action"];
+
+    /// <summary>必要列：永远可见、不可隐藏。</summary>
+    private static readonly string[] AssetListRequiredColumns = ["Name", "Action"];
+
+    private bool _suppressColumnSettingsEvents;
+
+    /// <summary>列 key → DataGridColumn。</summary>
+    private DataGridColumn? ResolveColumn(string key) => key switch
+    {
+        "Favorite" => ColFavorite,
+        "Select" => ColSelect,
+        "Group" => ColGroup,
+        "Owner" => ColOwner,
+        "Name" => ColName,
+        "IpPort" => ColIpPort,
+        "Username" => ColUsername,
+        "Status" => ColStatus,
+        "ExpiresOn" => ColExpiresOn,
+        "Note1" => ColNote1,
+        "Note2" => ColNote2,
+        "Note3" => ColNote3,
+        "Note4" => ColNote4,
+        "Template" => ColTemplate,
+        "Protocol" => ColProtocol,
+        "Action" => ColAction,
+        _ => null
+    };
+
+    /// <summary>DataGridColumn → 列 key（反向查找）。</summary>
+    private string? KeyOf(DataGridColumn column)
+    {
+        foreach (var key in AssetListColumnKeys)
+        {
+            if (ReferenceEquals(ResolveColumn(key), column)) return key;
+        }
+        return null;
+    }
+
+    /// <summary>列 key → 表头本地化键（Col_ 前缀）。</summary>
+    private static string ColumnKeyToHeaderKey(string key) => "Col_" + key;
+
+    /// <summary>从本地存储读取并应用列顺序 / 显隐 / 字号。</summary>
+    private void ApplyAssetListPreferences()
+    {
+        var data = _assetStore.Load();
+
+        // 顺序：按持久化顺序排列，缺失项按默认顺序补齐
+        var order = new List<string>();
+        foreach (var key in data.AssetListColumnOrder)
+        {
+            if (AssetListColumnKeys.Contains(key) && !order.Contains(key)) order.Add(key);
+        }
+        foreach (var key in AssetListColumnKeys)
+        {
+            if (!order.Contains(key)) order.Add(key);
+        }
+
+        var columnCount = GridAssets.Columns.Count;
+        for (int i = 0; i < order.Count && i < columnCount; i++)
+        {
+            var col = ResolveColumn(order[i]);
+            if (col != null) col.DisplayIndex = i;
+        }
+
+        // 显隐：必要列永远可见
+        var hidden = new HashSet<string>(data.AssetListHiddenColumns, StringComparer.Ordinal);
+        foreach (var key in AssetListColumnKeys)
+        {
+            var col = ResolveColumn(key);
+            if (col == null) continue;
+            col.Visibility = (!AssetListRequiredColumns.Contains(key) && hidden.Contains(key))
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+        }
+
+        ApplyAssetListFontSize(data.AssetListFontSize);
+    }
+
+    /// <summary>字号同时驱动行高与表头高度，保证行文字随档位变化。</summary>
+    private void ApplyAssetListFontSize(double size)
+    {
+        GridAssets.FontSize = size;
+        GridAssets.RowHeight = Math.Round(size * 3.3);
+        GridAssets.ColumnHeaderHeight = Math.Round(size * 2.9);
+    }
+
+    private void BtnColumnSettings_Click(object sender, RoutedEventArgs e)
+    {
+        BuildColumnSettingsPanel();
+        PopupColumnSettings.IsOpen = !PopupColumnSettings.IsOpen;
+    }
+
+    /// <summary>重建列设置面板：字号档位 + 按当前顺序排列的列勾选与上下移按钮。</summary>
+    private void BuildColumnSettingsPanel()
+    {
+        // 字号档位（填充时抑制 SelectionChanged 递归）
+        _suppressColumnSettingsEvents = true;
+        try
+        {
+            CmbListFontSize.Items.Clear();
+            var sizes = new (int Value, string Key)[]
+            {
+                (12, ResFontSizeSmall), (14, ResFontSizeNormal), (16, ResFontSizeLarge), (18, ResFontSizeXLarge)
+            };
+            int current = (int)Math.Round(GridAssets.FontSize);
+            int bestIndex = 0, bestDiff = int.MaxValue;
+            for (int i = 0; i < sizes.Length; i++)
+            {
+                CmbListFontSize.Items.Add(new ComboBoxItem { Content = L10n[sizes[i].Key], Tag = sizes[i].Value });
+                int diff = Math.Abs(sizes[i].Value - current);
+                if (diff < bestDiff) { bestDiff = diff; bestIndex = i; }
+            }
+            CmbListFontSize.SelectedIndex = bestIndex;
+        }
+        finally
+        {
+            _suppressColumnSettingsEvents = false;
+        }
+
+        // 按当前 DisplayIndex 升序排列的列勾选行
+        PanelColumnToggles.Children.Clear();
+        var ordered = GridAssets.Columns.OrderBy(c => c.DisplayIndex).ToList();
+        var buttonStyle = TryFindResource("ModernButtonStyle") as Style;
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            var col = ordered[i];
+            var key = KeyOf(col);
+            if (key == null) continue;
+
+            var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+
+            var down = new Button
+            {
+                Content = L10n[ResColSettingsMoveDown], Tag = key, Style = buttonStyle,
+                Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(4, 0, 0, 0),
+                IsEnabled = i < ordered.Count - 1, ToolTip = L10n[ResColSettingsMoveDown]
+            };
+            down.Click += ColumnMoveDown_Click;
+            DockPanel.SetDock(down, Dock.Right);
+            row.Children.Add(down);
+
+            var up = new Button
+            {
+                Content = L10n[ResColSettingsMoveUp], Tag = key, Style = buttonStyle,
+                Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(4, 0, 0, 0),
+                IsEnabled = i > 0, ToolTip = L10n[ResColSettingsMoveUp]
+            };
+            up.Click += ColumnMoveUp_Click;
+            DockPanel.SetDock(up, Dock.Right);
+            row.Children.Add(up);
+
+            var chk = new CheckBox
+            {
+                Content = L10n[ColumnKeyToHeaderKey(key)],
+                Tag = key,
+                IsChecked = col.Visibility == Visibility.Visible,
+                IsEnabled = !AssetListRequiredColumns.Contains(key),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            chk.Checked += ColumnVisibility_Changed;
+            chk.Unchecked += ColumnVisibility_Changed;
+            row.Children.Add(chk);
+
+            PanelColumnToggles.Children.Add(row);
+        }
+    }
+
+    private void ColumnVisibility_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressColumnSettingsEvents) return;
+        if (sender is not CheckBox chk || chk.Tag is not string key) return;
+        var col = ResolveColumn(key);
+        if (col == null) return;
+
+        if (AssetListRequiredColumns.Contains(key))
+        {
+            col.Visibility = Visibility.Visible;
+            return;
+        }
+
+        col.Visibility = chk.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        PersistAssetListPreferences();
+    }
+
+    private void ColumnMoveUp_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button b && b.Tag is string key) MoveColumn(key, -1);
+    }
+
+    private void ColumnMoveDown_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button b && b.Tag is string key) MoveColumn(key, 1);
+    }
+
+    private void MoveColumn(string key, int delta)
+    {
+        var col = ResolveColumn(key);
+        if (col == null) return;
+        int target = col.DisplayIndex + delta;
+        if (target < 0 || target >= GridAssets.Columns.Count) return;
+
+        var other = GridAssets.Columns.FirstOrDefault(c => c.DisplayIndex == target);
+        if (other == null) return;
+
+        int source = col.DisplayIndex;
+        col.DisplayIndex = target;
+        other.DisplayIndex = source;
+
+        BuildColumnSettingsPanel();
+        PersistAssetListPreferences();
+    }
+
+    private void CmbListFontSize_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressColumnSettingsEvents) return;
+        if (CmbListFontSize.SelectedItem is not ComboBoxItem item || item.Tag is not int size) return;
+        ApplyAssetListFontSize(size);
+        PersistAssetListPreferences();
+    }
+
+    /// <summary>把当前列顺序 / 显隐 / 字号写入本地存储（保留其余字段）。</summary>
+    private void PersistAssetListPreferences()
+    {
+        var hidden = GridAssets.Columns.Where(c => c.Visibility != Visibility.Visible)
+                                       .Select(c => KeyOf(c)).Where(k => k != null).Cast<string>().ToList();
+        var order = GridAssets.Columns.OrderBy(c => c.DisplayIndex)
+                                      .Select(c => KeyOf(c)).Where(k => k != null).Cast<string>().ToList();
+        var data = _assetStore.Load();
+        _assetStore.Save(data with
+        {
+            AssetListHiddenColumns = hidden,
+            AssetListColumnOrder = order,
+            AssetListFontSize = GridAssets.FontSize
+        });
+    }
+
     private void ShowAssetsArea(bool gridView)
     {
         _isGridView = gridView;
         SessionWorkspace.Visibility = Visibility.Collapsed;
+        HelpManual.Visibility = Visibility.Collapsed;
+        SettingsView.Visibility = Visibility.Collapsed;
+        TemplateManagement.Visibility = Visibility.Collapsed;
         GridAssets.Visibility = gridView ? Visibility.Collapsed : Visibility.Visible;
         ScrollCardsArea.Visibility = gridView ? Visibility.Visible : Visibility.Collapsed;
 
@@ -593,9 +884,55 @@ public partial class MainWindow : Window
 
     private void NavBtnSessions_Click(object sender, RoutedEventArgs e)
     {
+        ShowWorkspaceArea();
+    }
+
+    private void NavBtnTemplates_Click(object sender, RoutedEventArgs e)
+    {
+        _navMode = NavMode.Templates;
+        GridAssets.Visibility = Visibility.Collapsed;
+        ScrollCardsArea.Visibility = Visibility.Collapsed;
+        SessionWorkspace.Visibility = Visibility.Collapsed;
+        HelpManual.Visibility = Visibility.Collapsed;
+        SettingsView.Visibility = Visibility.Collapsed;
+        TemplateManagement.Visibility = Visibility.Visible;
+        TemplateManagement.Reload();
+        UpdateNavSelection();
+    }
+
+    private void NavBtnHelp_Click(object sender, RoutedEventArgs e)
+    {
+        _navMode = NavMode.Help;
+        GridAssets.Visibility = Visibility.Collapsed;
+        ScrollCardsArea.Visibility = Visibility.Collapsed;
+        SessionWorkspace.Visibility = Visibility.Collapsed;
+        SettingsView.Visibility = Visibility.Collapsed;
+        TemplateManagement.Visibility = Visibility.Collapsed;
+        HelpManual.Visibility = Visibility.Visible;
+        UpdateNavSelection();
+    }
+
+    private void NavBtnSettings_Click(object sender, RoutedEventArgs e)
+    {
+        _navMode = NavMode.Settings;
+        GridAssets.Visibility = Visibility.Collapsed;
+        ScrollCardsArea.Visibility = Visibility.Collapsed;
+        SessionWorkspace.Visibility = Visibility.Collapsed;
+        HelpManual.Visibility = Visibility.Collapsed;
+        TemplateManagement.Visibility = Visibility.Collapsed;
+        SettingsView.Visibility = Visibility.Visible;
+        UpdateNavSelection();
+    }
+
+    /// <summary>切到会话工作台并隐藏其它内容区。</summary>
+    private void ShowWorkspaceArea()
+    {
         _navMode = NavMode.Sessions;
         GridAssets.Visibility = Visibility.Collapsed;
         ScrollCardsArea.Visibility = Visibility.Collapsed;
+        HelpManual.Visibility = Visibility.Collapsed;
+        SettingsView.Visibility = Visibility.Collapsed;
+        TemplateManagement.Visibility = Visibility.Collapsed;
         SessionWorkspace.Visibility = Visibility.Visible;
         UpdateNavSelection();
     }
@@ -653,7 +990,10 @@ public partial class MainWindow : Window
             (NavMode.Sessions, NavBtnSessions),
             (NavMode.Favorites, NavBtnFavorites),
             (NavMode.Recent, NavBtnRecent),
-            (NavMode.Groups, NavBtnGroups)
+            (NavMode.Groups, NavBtnGroups),
+            (NavMode.Templates, NavBtnTemplates),
+            (NavMode.Help, NavBtnHelp),
+            (NavMode.Settings, NavBtnSettings)
         };
 
         foreach (var (mode, btn) in buttons)
@@ -678,6 +1018,14 @@ public partial class MainWindow : Window
 
         _rememberPassword = data.RememberPassword;
         _assetApiUrl = data.AssetApiUrl;
+        _vncViewerPath = data.VncViewerPath;
+        _vncArgumentTemplate = data.VncArgumentTemplate;
+        _sshStandaloneWindow = data.SshStandaloneWindow;
+        ApplyVncSettings();
+
+        // 回填设置页，并让持久化的 SSH 终端外观立即对新会话生效
+        SettingsView.LoadSettings(_vncViewerPath, _vncArgumentTemplate, data.SshTerminalFontSize, data.SshTerminalScheme, data.SshStandaloneWindow);
+        SshTerminalView.SetDefaults(data.SshTerminalFontSize, data.SshTerminalScheme);
         _suppressRememberToggle = true;
         ChkRememberPassword.IsChecked = _rememberPassword;
         _suppressRememberToggle = false;
@@ -704,6 +1052,9 @@ public partial class MainWindow : Window
 
         // 恢复上次的左侧导航折叠状态
         ApplyLeftNavState(data.IsLeftNavCollapsed);
+
+        // 与最新存储保持一致的列展示偏好
+        ApplyAssetListPreferences();
     }
 
     /// <summary>把资产加入列表并订阅其选中状态变化，用于实时刷新计数与表头三态。</summary>
@@ -759,7 +1110,20 @@ public partial class MainWindow : Window
     {
         var storeData = _assetStore.Load();
         var models = _allAssets.Select(vm => vm.Model).ToList();
-        _assetStore.Save(storeData with { Assets = models, AssetApiUrl = _assetApiUrl });
+        _assetStore.Save(storeData with
+        {
+            Assets = models,
+            AssetApiUrl = _assetApiUrl,
+            VncViewerPath = _vncViewerPath,
+            VncArgumentTemplate = _vncArgumentTemplate
+        });
+    }
+
+    /// <summary>把 VNC 客户端设置同步给会话工作台。</summary>
+    private void ApplyVncSettings()
+    {
+        SessionWorkspace.VncViewerPath = _vncViewerPath;
+        SessionWorkspace.VncArgumentTemplate = _vncArgumentTemplate;
     }
 
     private void ApplyFilter()
@@ -1634,23 +1998,68 @@ public partial class MainWindow : Window
                     }
                 }
 
-                // 加载到会话工作台；switchToWorkspace=false（资产列表双击连接）时停留当前视图，由用户自行切换
-                SessionWorkspace.AddSession(assetToLaunch, password, keyPath, null, jumpAsset, jumpPassword);
-                if (switchToWorkspace)
+                if (_sshStandaloneWindow)
                 {
-                    GridAssets.Visibility = Visibility.Collapsed;
-                    SessionWorkspace.Visibility = Visibility.Visible;
-                    _navMode = NavMode.Sessions;
-                    UpdateNavSelection();
+                    // 独立窗口模式：不加入工作台、不跳转工作台，主窗口保持当前视图
+                    var sshWindow = new SshWindow(assetToLaunch, password, keyPath, null, jumpAsset, jumpPassword) { Owner = this };
+                    sshWindow.Show();
+                    TxtStatusBarInfo.Text = L10n.Format("Status_SshOpened", assetToLaunch.Name);
                 }
-                TxtStatusBarInfo.Text = switchToWorkspace
-                    ? L10n.Format("Status_SshOpened", assetToLaunch.Name)
-                    : L10n.Format("Status_ConnectBackground", assetToLaunch.Name);
+                else
+                {
+                    // 加载到会话工作台；switchToWorkspace=false（资产列表双击连接）时停留当前视图，由用户自行切换
+                    SessionWorkspace.AddSession(assetToLaunch, password, keyPath, null, jumpAsset, jumpPassword);
+                    if (switchToWorkspace)
+                    {
+                        ShowWorkspaceArea();
+                    }
+                    TxtStatusBarInfo.Text = switchToWorkspace
+                        ? L10n.Format("Status_SshOpened", assetToLaunch.Name)
+                        : L10n.Format("Status_ConnectBackground", assetToLaunch.Name);
+                }
                 BorderConnectionErrorHint.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
             {
                 TxtErrorReason.Text = L10n.Format("Msg_SshConnectFailed", ex.Message);
+                BorderConnectionErrorHint.Visibility = Visibility.Visible;
+                TxtStatusBarInfo.Text = L10n.Format("Status_ConnectFailed", ex.Message);
+            }
+        }
+        else if (string.Equals(assetToLaunch.Protocol, "vnc", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                // VNC 客户端为外装程序，先确认本机确实能定位到它，否则给出明确指引而不是打开空会话
+                var viewer = VncLauncher.ResolveViewer(_vncViewerPath);
+                if (viewer == null)
+                {
+                    MessageBox.Show(L10n["Msg_VncViewerMissing"], L10n["Msg_Tip"], MessageBoxButton.OK, MessageBoxImage.Warning);
+                    TxtStatusBarInfo.Text = L10n["Msg_VncViewerMissing"];
+                    BorderConnectionErrorHint.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                // 密码仅在「记住密码」时可用；多数 VNC 客户端会把明文密码放进进程命令行
+                var vncPassword = assetToLaunch.Password;
+                if (string.IsNullOrEmpty(vncPassword) && !string.IsNullOrEmpty(assetToLaunch.EncryptedPassword))
+                {
+                    vncPassword = CredentialProtector.Unprotect(assetToLaunch.EncryptedPassword);
+                }
+
+                SessionWorkspace.AddSession(assetToLaunch, vncPassword);
+                if (switchToWorkspace)
+                {
+                    ShowWorkspaceArea();
+                }
+                TxtStatusBarInfo.Text = switchToWorkspace
+                    ? L10n.Format("Status_VncOpened", assetToLaunch.Name)
+                    : L10n.Format("Status_ConnectBackground", assetToLaunch.Name);
+                BorderConnectionErrorHint.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                TxtErrorReason.Text = L10n.Format("Msg_VncConnectFailed", ex.Message);
                 BorderConnectionErrorHint.Visibility = Visibility.Visible;
                 TxtStatusBarInfo.Text = L10n.Format("Status_ConnectFailed", ex.Message);
             }
@@ -1675,9 +2084,9 @@ public partial class MainWindow : Window
 
                 // 参数优先级：资产（“连接方案”里配置的）→ 绑定模板 → 顶栏兜底
                 // 顶栏「设备重定向」被用户改动后作为本次连接的显式覆盖；未改动时按 资产 → 模板 → 顶栏默认 取值
-                bool? drivesOverride = _redirectToolbarTouched ? (ChkDriveMap.IsChecked ?? false) : null;
-                bool? audioOverride = _redirectToolbarTouched ? (ChkAudio.IsChecked ?? true) : null;
-                bool? clipboardOverride = _redirectToolbarTouched ? (ChkClipboard.IsChecked ?? false) : null;
+                bool? drivesOverride = _driveToolbarTouched ? (ChkDriveMap.IsChecked ?? false) : null;
+                bool? audioOverride = _audioToolbarTouched ? (ChkAudio.IsChecked ?? true) : null;
+                bool? clipboardOverride = _clipboardToolbarTouched ? (ChkClipboard.IsChecked ?? false) : null;
 
                 var rdpAsset = assetToLaunch with
                 {
@@ -1686,21 +2095,24 @@ public partial class MainWindow : Window
                     RdpColorDepth = assetToLaunch.RdpColorDepth ?? rdpTemplate?.RdpColorDepth ?? colorDepth,
                     RedirectDrives = drivesOverride ?? assetToLaunch.RedirectDrives ?? rdpTemplate?.RedirectDrives ?? false,
                     RedirectAudio = audioOverride ?? assetToLaunch.RedirectAudio ?? rdpTemplate?.RedirectAudio ?? true,
-                    RedirectClipboard = clipboardOverride ?? assetToLaunch.RedirectClipboard ?? rdpTemplate?.RedirectClipboard ?? false
+                    RedirectClipboard = clipboardOverride ?? assetToLaunch.RedirectClipboard ?? rdpTemplate?.RedirectClipboard ?? true
                 };
 
                 // 加载到会话工作台；switchToWorkspace=false（资产列表双击连接）时停留当前视图，由用户自行切换
                 SessionWorkspace.AddSession(rdpAsset, rdpPassword, template: rdpTemplate);
                 if (switchToWorkspace)
                 {
-                    GridAssets.Visibility = Visibility.Collapsed;
-                    SessionWorkspace.Visibility = Visibility.Visible;
-                    _navMode = NavMode.Sessions;
-                    UpdateNavSelection();
+                    ShowWorkspaceArea();
                 }
                 TxtStatusBarInfo.Text = switchToWorkspace
                     ? L10n.Format("Status_RdpOpened", assetToLaunch.Name)
                     : L10n.Format("Status_ConnectBackground", assetToLaunch.Name);
+                // 用户本会话勾选过剪贴板：Windows 安全对话框默认关闭全部重定向，一次性提示需在弹窗中再勾一次
+                if (_clipboardHintArmed && !_clipboardHintShown)
+                {
+                    TxtStatusBarInfo.Text = L10n["Status_ClipboardSecurityHint"];
+                    _clipboardHintShown = true;
+                }
                 BorderConnectionErrorHint.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
@@ -1782,7 +2194,13 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RedirectToolbar_Changed(object sender, RoutedEventArgs e) => _redirectToolbarTouched = true;
+    private void RedirectToolbar_Changed(object sender, RoutedEventArgs e)
+    {
+        // 逐项独立记录：只置位被改动的那个开关，未改动的仍按资产 → 模板取值
+        if (ReferenceEquals(sender, ChkDriveMap)) _driveToolbarTouched = true;
+        else if (ReferenceEquals(sender, ChkAudio)) _audioToolbarTouched = true;
+        else if (ReferenceEquals(sender, ChkClipboard)) _clipboardToolbarTouched = true;
+    }
 
     private void GridAssets_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -1863,7 +2281,10 @@ public partial class MainWindow : Window
 
     private void ApplyInspectorProtocolVisibility()
     {
-        PanelRdpResolution.Visibility = _inspectorProtocol.Equals("ssh", StringComparison.OrdinalIgnoreCase)
+        // SSH 与 VNC 都没有 RDP 的分辨率设置（VNC 由外装客户端自己控制缩放）
+        var protocol = _inspectorProtocol;
+        PanelRdpResolution.Visibility = protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase)
+            || protocol.Equals("vnc", StringComparison.OrdinalIgnoreCase)
             ? Visibility.Collapsed
             : Visibility.Visible;
     }

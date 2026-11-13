@@ -29,6 +29,7 @@ public partial class ServerEditDialog : Window
     public const string ResFldNote1 = "Fld_Note1";
     public const string ResFldNote2 = "Fld_Note2";
     public const string ResFldNote3 = "Fld_Note3";
+    public const string ResFldNote4 = "Fld_Note4";
     public const string ResRdpRedirect = "Dlg_RdpRedirect";
     public const string ResDriveMap = "Dlg_DriveMap";
     public const string ResAudio = "Dlg_Audio";
@@ -135,10 +136,11 @@ public partial class ServerEditDialog : Window
             TxtNote1.Text = existing.CustomNote1;
             TxtNote2.Text = existing.CustomNote2;
             TxtNote3.Text = existing.CustomNote3;
+            TxtNote4.Text = existing.CustomNote4;
 
             ChkRedirectDrives.IsChecked = existing.RedirectDrives ?? false;
             ChkRedirectAudio.IsChecked = existing.RedirectAudio ?? true;
-            ChkRedirectClipboard.IsChecked = existing.RedirectClipboard ?? false;
+            ChkRedirectClipboard.IsChecked = existing.RedirectClipboard ?? true;
         }
         else
         {
@@ -155,13 +157,15 @@ public partial class ServerEditDialog : Window
 
         var proto = (CmbProtocol.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "rdp";
         var isSsh = proto.Equals("ssh", StringComparison.OrdinalIgnoreCase);
+        var isVnc = proto.Equals("vnc", StringComparison.OrdinalIgnoreCase);
         PanelServerSshFields.Visibility = isSsh ? Visibility.Visible : Visibility.Collapsed;
-        PanelRdpRedirect.Visibility = isSsh ? Visibility.Collapsed : Visibility.Visible;
+        // VNC 不使用 RDP 的设备重定向
+        PanelRdpRedirect.Visibility = isSsh || isVnc ? Visibility.Collapsed : Visibility.Visible;
 
         // 仅在端口仍为默认值时跟随协议切换，避免覆盖用户自定义端口
         var port = TxtPort.Text.Trim();
-        if (port.Length == 0 || port == "3389" || port == "22")
-            TxtPort.Text = isSsh ? "22" : "3389";
+        if (port.Length == 0 || port == "3389" || port == "22" || port == "5900")
+            TxtPort.Text = isSsh ? "22" : (isVnc ? "5900" : "3389");
     }
 
     private void BtnBrowseKey_Click(object sender, RoutedEventArgs e)
@@ -215,9 +219,10 @@ public partial class ServerEditDialog : Window
             CustomNote1 = TxtNote1.Text.Trim(),
             CustomNote2 = TxtNote2.Text.Trim(),
             CustomNote3 = TxtNote3.Text.Trim(),
+            CustomNote4 = TxtNote4.Text.Trim(),
             RedirectDrives = ChkRedirectDrives.IsChecked ?? false,
             RedirectAudio = ChkRedirectAudio.IsChecked ?? true,
-            RedirectClipboard = ChkRedirectClipboard.IsChecked ?? false,
+            RedirectClipboard = ChkRedirectClipboard.IsChecked ?? true,
             JumpAssetId = (CmbJumpHost.SelectedItem as ComboBoxItem)?.Tag as Guid?,
             TemplateId = (CmbTemplate.SelectedItem as ComboBoxItem)?.Tag as Guid?,
             Password = string.IsNullOrEmpty(TxtPassword.Password) ? null : TxtPassword.Password

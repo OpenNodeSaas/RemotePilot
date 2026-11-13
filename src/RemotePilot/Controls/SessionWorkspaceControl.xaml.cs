@@ -1,8 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -12,8 +10,6 @@ using System.Windows.Media;
 using RemotePilot.Models;
 using RemotePilot.Services;
 using RemotePilot.ViewModels;
-using Renci.SshNet;
-using VirtualTerminal;
 
 namespace RemotePilot.Controls;
 
@@ -79,6 +75,12 @@ public partial class SessionWorkspaceControl : UserControl
 
     public ObservableCollection<SessionItemViewModel> Sessions => _sessions;
 
+    /// <summary>外装 VNC 客户端路径（留空则自动探测常见安装位置）。</summary>
+    public string? VncViewerPath { get; set; }
+
+    /// <summary>VNC 客户端启动参数模板（留空则按客户端家族取默认模板）。</summary>
+    public string? VncArgumentTemplate { get; set; }
+
     public SessionWorkspaceControl()
     {
         InitializeComponent();
@@ -98,10 +100,14 @@ public partial class SessionWorkspaceControl : UserControl
 
         var vm = new SessionItemViewModel(asset);
 
-        // 创建对应视图元素 (SSH 原生终端 或 RDP 占位)
+        // 创建对应视图元素 (SSH 原生终端 / VNC 外装客户端 / RDP 占位)
         if (asset.Protocol.Equals("SSH", StringComparison.OrdinalIgnoreCase))
         {
             vm.ViewElement = CreateSshTerminalView(vm, password, privateKeyPath, privateKeyPassphrase, jumpAsset, jumpPassword);
+        }
+        else if (asset.Protocol.Equals("VNC", StringComparison.OrdinalIgnoreCase))
+        {
+            vm.ViewElement = CreateVncPlaceholderView(vm, password);
         }
         else
         {
@@ -116,148 +122,22 @@ public partial class SessionWorkspaceControl : UserControl
     private FrameworkElement CreateSshTerminalView(SessionItemViewModel vm, string? password, string? privateKeyPath, string? privateKeyPassphrase,
         ServerAsset? jumpAsset = null, string? jumpPassword = null)
     {
-        // 顶部错误提示条 + 原生 WPF 终端（不依赖 WebView2 运行时）
-        var host = new Grid();
-        host.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        host.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-
-        var messageBar = new Border
+        // 连接逻辑复用 SshTerminalHost（工作台内嵌会话与独立窗口共用）
+        var host = new SshTerminalHost(vm.Asset, password, privateKeyPath, privateKeyPassphrase, jumpAsset, jumpPassword);
+        host.Connecting += () => vm.SetStatus(SessionStatusKind.Connecting);
+        host.Connected += (session, jump) =>
         {
-            Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3A2A2A")),
-            Padding = new Thickness(10, 6, 10, 6),
-            Visibility = Visibility.Collapsed
+            vm.SshSession = session;
+            vm.JumpConnection = jump;
+            vm.SetStatus(SessionStatusKind.Connected);
         };
-        var messageText = new TextBlock
+        host.Disconnected += () => vm.SetStatus(SessionStatusKind.Disconnected);
+        host.ConnectFailed += error =>
         {
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F48771")),
-            FontFamily = new FontFamily("Consolas"),
-            FontSize = 12,
-            TextWrapping = TextWrapping.Wrap
+            vm.SetStatus(SessionStatusKind.Failed);
+            SessionConnectFailed?.Invoke(vm, error);
         };
-        messageBar.Child = messageText;
-        Grid.SetRow(messageBar, 0);
-        host.Children.Add(messageBar);
-
-        var terminal = new SshTerminalView();
-        Grid.SetRow(terminal, 1);
-        host.Children.Add(terminal);
-
-        var border = new Border { Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1E1E1E")), Child = host };
-
-        void ShowMessage(string message)
-        {
-            messageText.Text = message;
-            messageBar.Visibility = Visibility.Visible;
-        }
-
-        var asset = vm.Asset;
-        bool connectStarted = false;
-
-        // 加入可视树后再发起 SSH 连接
-        terminal.Loaded += async (s, e) =>
-        {
-            if (connectStarted) return;
-            connectStarted = true;
-
-            vm.SetStatus(SessionStatusKind.Connecting);
-            ShowMessage(jumpAsset != null
-                ? L10n.Format("Term_JumpConnecting", jumpAsset.Host, asset.Host, asset.Port)
-                : L10n.Format("Term_Connecting", asset.Host, asset.Port));
-
-            SecureShellSession? session = null;
-            SshJumpConnection? jumpConnection = null;
-            string? connectError = null;
-            try
-            {
-                string username = !string.IsNullOrEmpty(asset.Username) ? asset.Username : "root";
-
-                if (jumpAsset != null)
-                {
-                    // 先连跳板机并开本地端口转发，再从 127.0.0.1:随机端口 连目标机
-                    var jumpKeyPath = jumpAsset.SshKeyPath;
-                    if (string.IsNullOrWhiteSpace(jumpPassword) && string.IsNullOrWhiteSpace(jumpKeyPath))
-                    {
-                        throw new ArgumentException(L10n["Msg_JumpCredMissing"]);
-                    }
-
-                    jumpConnection = await Task.Run(() => SshJumpConnection.Create(
-                        jumpAsset, jumpPassword, jumpKeyPath, asset.Host, asset.Port));
-
-                    var targetClient = CreateSshClient(jumpConnection.LoopbackHost, jumpConnection.LoopbackPort,
-                        username, password, privateKeyPath, privateKeyPassphrase);
-                    session = new SecureShellSession(targetClient);
-                }
-                else if (!string.IsNullOrEmpty(privateKeyPath) && File.Exists(privateKeyPath))
-                {
-                    string keyPath = privateKeyPath;
-                    PrivateKeyFile keyFile = string.IsNullOrEmpty(privateKeyPassphrase)
-                        ? new PrivateKeyFile(keyPath)
-                        : new PrivateKeyFile(keyPath, privateKeyPassphrase);
-                    session = new SecureShellSession(asset.Host, asset.Port, username, keyFile);
-                }
-                else if (!string.IsNullOrEmpty(password))
-                {
-                    session = new SecureShellSession(asset.Host, asset.Port, username, password);
-                }
-                else
-                {
-                    throw new ArgumentException(L10n["Msg_SshCredRequired"]);
-                }
-
-                await session.ConnectAsync();
-            }
-            catch (Exception ex)
-            {
-                connectError = ex.Message;
-                jumpConnection?.Dispose();
-                jumpConnection = null;
-            }
-
-            if (connectError == null && session != null)
-            {
-                // 连接成功后再挂到终端控件，确保内部的窗口尺寸同步不会在未连接时抛异常
-                vm.SshSession = session;
-                vm.JumpConnection = jumpConnection;
-                terminal.Terminal.Session = session;
-                vm.SetStatus(SessionStatusKind.Connected);
-                terminal.SetStatus(L10n["Status_Connected"]);
-                messageBar.Visibility = Visibility.Collapsed;
-                terminal.FocusTerminal();
-
-                // 断连提示：事件可能来自后台线程，统一切回 UI 线程
-                session.Disconnected += (s2, e2) => terminal.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    vm.SetStatus(SessionStatusKind.Disconnected);
-                    ShowMessage(L10n["Term_Disconnected"]);
-                    terminal.SetStatus(L10n["Status_Disconnected"]);
-                }));
-            }
-            else
-            {
-                session?.Dispose();
-                vm.SetStatus(SessionStatusKind.Failed);
-                var failed = L10n.Format("Term_ConnectFailed", connectError ?? "");
-                ShowMessage(failed);
-                terminal.SetStatus(L10n["Term_StatusFailed"]);
-                SessionConnectFailed?.Invoke(vm, connectError);
-            }
-        };
-
-        return border;
-    }
-
-    /// <summary>按凭据类型创建 SSH 客户端（密钥优先，其次密码）。</summary>
-    private static SshClient CreateSshClient(string host, int port, string username, string? password, string? keyPath, string? passphrase)
-    {
-        username = string.IsNullOrWhiteSpace(username) ? "root" : username;
-
-        if (!string.IsNullOrEmpty(keyPath) && File.Exists(keyPath))
-        {
-            var keyFile = string.IsNullOrEmpty(passphrase) ? new PrivateKeyFile(keyPath) : new PrivateKeyFile(keyPath, passphrase);
-            return new SshClient(host, port, username, keyFile);
-        }
-
-        return new SshClient(host, port, username, password ?? "");
+        return host;
     }
 
     private FrameworkElement CreateRdpPlaceholderView(SessionItemViewModel vm, string? password, ConnectionTemplate? template = null)
@@ -323,6 +203,94 @@ public partial class SessionWorkspaceControl : UserControl
             if (launchStarted) return;
             launchStarted = true;
             LaunchMstsc();
+        };
+
+        return border;
+    }
+
+    /// <summary>
+    /// VNC 会话面板：与 RDP 一样只做占位与拉起，真实画面由外装的 VNC 客户端独立窗口承载。
+    /// </summary>
+    private FrameworkElement CreateVncPlaceholderView(SessionItemViewModel vm, string? password)
+    {
+        var panel = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(20)
+        };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = L10n["Layout_VncTitle"],
+            Foreground = Brushes.White,
+            FontSize = 16,
+            FontWeight = FontWeights.Bold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 10)
+        });
+
+        var targetText = new TextBlock
+        {
+            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#A0A0A0")),
+            FontSize = 12,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 15)
+        };
+        panel.Children.Add(targetText);
+
+        var resolved = VncLauncher.ResolveViewer(VncViewerPath);
+        targetText.Text = resolved == null
+            ? L10n["Layout_VncViewerMissing"]
+            : L10n.Format("Layout_VncTarget", vm.Asset.Host, vm.Asset.Port, resolved.DisplayName);
+
+        void LaunchViewer()
+        {
+            var viewer = VncLauncher.ResolveViewer(VncViewerPath);
+            if (viewer == null)
+            {
+                MessageBox.Show(L10n["Msg_VncViewerMissing"], L10n["Msg_ErrorTitle"], MessageBoxButton.OK, MessageBoxImage.Error);
+                vm.SetStatus(SessionStatusKind.Failed);
+                return;
+            }
+
+            try
+            {
+                // 未自定义参数模板时按客户端家族取默认模板
+                var template = string.IsNullOrWhiteSpace(VncArgumentTemplate)
+                    ? VncLauncher.DefaultArgumentTemplate(viewer.Family)
+                    : VncArgumentTemplate;
+                var arguments = VncLauncher.RenderArguments(template, vm.Asset, password);
+                VncLauncher.Launch(viewer.ExecutablePath, arguments);
+                vm.SetStatus(SessionStatusKind.Connected);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(L10n.Format("Msg_VncLaunchFailed", ex.Message), L10n["Msg_ErrorTitle"], MessageBoxButton.OK, MessageBoxImage.Error);
+                vm.SetStatus(SessionStatusKind.Failed);
+            }
+        }
+
+        var btnLaunchVnc = new Button
+        {
+            Content = L10n["Layout_LaunchVnc"],
+            Style = (Style)FindResource("PrimaryButtonStyle"),
+            Padding = new Thickness(12, 6, 12, 6)
+        };
+        btnLaunchVnc.Click += (s, e) => LaunchViewer();
+        panel.Children.Add(btnLaunchVnc);
+
+        var border = new Border { Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#252526")) };
+        border.Child = panel;
+
+        // 加入工作台即直接拉起外装客户端，免去再点一次按钮
+        bool vncLaunchStarted = false;
+        border.Loaded += (s, e) =>
+        {
+            if (vncLaunchStarted) return;
+            vncLaunchStarted = true;
+            LaunchViewer();
         };
 
         return border;

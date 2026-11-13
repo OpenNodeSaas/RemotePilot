@@ -31,6 +31,7 @@
                 <CheckBox x:Name="ChkNote1" Content="{DynamicResource {x:Static local:ExportFieldsDialog.ResNote1}}" IsChecked="True" Margin="0,4"/>
                 <CheckBox x:Name="ChkNote2" Content="{DynamicResource {x:Static local:ExportFieldsDialog.ResNote2}}" IsChecked="True" Margin="0,4"/>
                 <CheckBox x:Name="ChkNote3" Content="{DynamicResource {x:Static local:ExportFieldsDialog.ResNote3}}" IsChecked="True" Margin="0,4"/>
+                <CheckBox x:Name="ChkNote4" Content="{DynamicResource {x:Static local:ExportFieldsDialog.ResNote4}}" IsChecked="True" Margin="0,4"/>
                 <CheckBox x:Name="ChkProtocol" Content="{DynamicResource {x:Static local:ExportFieldsDialog.ResProtocol}}" IsChecked="True" Margin="0,4"/>
                 <CheckBox x:Name="ChkPort" Content="{DynamicResource {x:Static local:ExportFieldsDialog.ResPort}}" IsChecked="True" Margin="0,4"/>
                 <CheckBox x:Name="ChkSshKeyPath" Content="{DynamicResource {x:Static local:ExportFieldsDialog.ResSshKeyPath}}" Margin="0,4" Foreground="#C0392B"/>

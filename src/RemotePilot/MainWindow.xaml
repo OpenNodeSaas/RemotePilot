@@ -148,6 +148,27 @@
                         </Button>
                         <StackPanel x:Name="PanelNavGroups" Margin="22,0,6,4" Visibility="Collapsed"/>
 
+                        <Button x:Name="NavBtnTemplates" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnTemplates_Click">
+                            <Grid>
+                                <TextBlock Text="🧩" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtNavTemplatesLabel" Text="{DynamicResource {x:Static local:MainWindow.ResNavTemplates}}" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
+                        <Button x:Name="NavBtnHelp" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnHelp_Click">
+                            <Grid>
+                                <TextBlock Text="📖" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtNavHelpLabel" Text="{DynamicResource {x:Static local:MainWindow.ResNavHelp}}" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
+                        <Button x:Name="NavBtnSettings" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,7" Padding="14,14" Background="Transparent" BorderThickness="0" Click="NavBtnSettings_Click">
+                            <Grid>
+                                <TextBlock Text="⚙" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtNavSettingsLabel" Text="{DynamicResource {x:Static local:MainWindow.ResNavSettings}}" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
                         <Separator Background="{DynamicResource BorderBrush}" Margin="8,16"/>
 
                     </StackPanel>
@@ -195,9 +216,9 @@
                             <Button x:Name="BtnViewTable" Content="{DynamicResource {x:Static local:MainWindow.ResBtnViewTable}}" Style="{StaticResource ModernButtonStyle}" Padding="8,4" Background="{DynamicResource Primary}" Foreground="White" Click="BtnViewTable_Click"/>
                             <Button x:Name="BtnViewGrid" Content="{DynamicResource {x:Static local:MainWindow.ResBtnViewGrid}}" Style="{StaticResource ModernButtonStyle}" Padding="8,4" Click="BtnViewGrid_Click"/>
                         </StackPanel>
+                        <Button x:Name="BtnColumnSettings" Content="{DynamicResource {x:Static local:MainWindow.ResBtnColumnSettings}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Padding="8,4" Click="BtnColumnSettings_Click"/>
                         <Button x:Name="BtnAddServer" Content="{DynamicResource {x:Static local:MainWindow.ResBtnAddServer}}" Style="{StaticResource PrimaryButtonStyle}" Margin="4,0" Click="BtnAddServer_Click"/>
                         <Button x:Name="BtnOpen" Content="{DynamicResource {x:Static local:MainWindow.ResBtnOpen}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" FontWeight="Bold" Foreground="{DynamicResource Primary}" Click="BtnOpen_Click"/>
-                        <Button x:Name="BtnOpenSettingsDrawer" Content="{DynamicResource {x:Static local:MainWindow.ResBtnOpenDrawer}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Foreground="{DynamicResource Primary}" Click="BtnOpenSettingsDrawer_Click"/>
                         <Button x:Name="BtnImport" Content="{DynamicResource {x:Static local:MainWindow.ResBtnImport}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Click="BtnImport_Click"/>
                         <Button x:Name="BtnExportSelected" Content="{DynamicResource {x:Static local:MainWindow.ResBtnExportSelected}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Click="BtnExportSelected_Click"/>
                         <Button x:Name="BtnInvertSelect" Content="{DynamicResource {x:Static local:MainWindow.ResBtnInvertSelect}}" Style="{StaticResource ModernButtonStyle}" Margin="4,0" Click="BtnInvertSelect_Click"/>
@@ -207,6 +228,24 @@
                     </StackPanel>
                 </Grid>
             </Border>
+
+            <!-- 列设置浮层：列显隐 / 顺序 / 字号 -->
+            <Popup x:Name="PopupColumnSettings" Grid.Row="0" PlacementTarget="{Binding ElementName=BtnColumnSettings}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+                <Border Background="{DynamicResource SurfaceBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12">
+                    <StackPanel Width="280">
+                        <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResColSettingsTitle}}" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResColSettingsHint}}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedForeground}" Margin="0,0,0,8"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResColSettingsFontSize}}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="CmbListFontSize" Width="140" SelectionChanged="CmbListFontSize_SelectionChanged"/>
+                        </StackPanel>
+                        <Separator Margin="0,0,0,8"/>
+                        <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="PanelColumnToggles"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+            </Popup>
 
             <!-- 第二行工具栏：窗口模式与设备重定向控制 -->
             <Border x:Name="BorderTopSettings" Grid.Row="1" Background="{DynamicResource SurfaceBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="12,8">
@@ -222,7 +261,7 @@
                     <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResSettingDeviceControl}}" VerticalAlignment="Center" Margin="4,0,6,0" Foreground="{DynamicResource MutedForeground}"/>
                     <CheckBox x:Name="ChkDriveMap" Content="{DynamicResource {x:Static local:MainWindow.ResSettingDriveMap}}" ToolTip="{DynamicResource {x:Static local:MainWindow.ResTipDeviceRedirect}}" VerticalAlignment="Center" Margin="4,0" Foreground="{DynamicResource AppForeground}"/>
                     <CheckBox x:Name="ChkAudio" Content="{DynamicResource {x:Static local:MainWindow.ResSettingAudio}}" ToolTip="{DynamicResource {x:Static local:MainWindow.ResTipDeviceRedirect}}" VerticalAlignment="Center" Margin="4,0" IsChecked="True" Foreground="{DynamicResource AppForeground}"/>
-                    <CheckBox x:Name="ChkClipboard" Content="{DynamicResource {x:Static local:MainWindow.ResSettingClipboard}}" ToolTip="{DynamicResource {x:Static local:MainWindow.ResTipDeviceRedirect}}" VerticalAlignment="Center" Margin="4,0" Foreground="{DynamicResource AppForeground}"/>
+                    <CheckBox x:Name="ChkClipboard" Content="{DynamicResource {x:Static local:MainWindow.ResSettingClipboard}}" ToolTip="{DynamicResource {x:Static local:MainWindow.ResTipDeviceRedirect}}" VerticalAlignment="Center" Margin="4,0" IsChecked="True" Foreground="{DynamicResource AppForeground}"/>
                     
                     <Separator Margin="10,0" Background="{DynamicResource BorderBrush}"/>
                     
@@ -266,7 +305,7 @@
                           AlternationCount="2"
                           GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource BorderBrush}">
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Header="{Binding [Col_Favorite], Source={x:Static svc:LocalizationManager.Instance}}" Width="56" SortMemberPath="IsFavorite">
+                        <DataGridTemplateColumn x:Name="ColFavorite" Header="{Binding [Col_Favorite], Source={x:Static svc:LocalizationManager.Instance}}" Width="56" SortMemberPath="IsFavorite">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Button Content="{Binding FavoriteGlyph}" Foreground="{Binding FavoriteBrush}" Background="Transparent" BorderThickness="0"
@@ -277,7 +316,7 @@
                         </DataGridTemplateColumn>
 
                         <!-- 选择列：表头为三态复选框（全选/半选/全不选当前可见行），单元格双向绑定 IsSelected -->
-                        <DataGridTemplateColumn Width="50" CanUserSort="False">
+                        <DataGridTemplateColumn x:Name="ColSelect" Width="50" CanUserSort="False">
                             <DataGridTemplateColumn.Header>
                                 <CheckBox IsThreeState="True" HorizontalAlignment="Center" VerticalAlignment="Center"
                                           Click="ChkSelectAllHeader_Click"
@@ -290,41 +329,42 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="{Binding [Col_Group], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Group}" Width="90" IsReadOnly="True"/>
+                        <DataGridTextColumn x:Name="ColGroup" Header="{Binding [Col_Group], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Group}" Width="90" IsReadOnly="True"/>
                         
-                        <DataGridTextColumn Header="{Binding [Col_Owner], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Owner}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn x:Name="ColOwner" Header="{Binding [Col_Owner], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Owner}" Width="80" IsReadOnly="True"/>
                         
-                        <DataGridTextColumn Header="{Binding [Col_Name], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Name}" Width="150" IsReadOnly="True" SortMemberPath="Name"/>
+                        <DataGridTextColumn x:Name="ColName" Header="{Binding [Col_Name], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Name}" Width="150" IsReadOnly="True" SortMemberPath="Name"/>
 
-                        <DataGridTemplateColumn Header="{Binding [Col_IpPort], Source={x:Static svc:LocalizationManager.Instance}}" Width="160" SortMemberPath="IpPortDisplay">
+                        <DataGridTemplateColumn x:Name="ColIpPort" Header="{Binding [Col_IpPort], Source={x:Static svc:LocalizationManager.Instance}}" Width="160" SortMemberPath="IpPortDisplay">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding IpPortDisplay}" FontSize="12" Foreground="{DynamicResource MutedForeground}" VerticalAlignment="Center" Margin="2,0"/>
+                                    <TextBlock Text="{Binding IpPortDisplay}" Foreground="{DynamicResource MutedForeground}" VerticalAlignment="Center" Margin="2,0"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTextColumn Header="{Binding [Col_Username], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Username}" Width="90" IsReadOnly="True"/>
+                        <DataGridTextColumn x:Name="ColUsername" Header="{Binding [Col_Username], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Username}" Width="90" IsReadOnly="True"/>
                         
                         <!-- 状态带颜色标签 -->
-                        <DataGridTemplateColumn Header="{Binding [Col_Status], Source={x:Static svc:LocalizationManager.Instance}}" Width="90" SortMemberPath="StatusKind">
+                        <DataGridTemplateColumn x:Name="ColStatus" Header="{Binding [Col_Status], Source={x:Static svc:LocalizationManager.Instance}}" Width="90" SortMemberPath="StatusKind">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Border Background="{Binding StatusBadgeBackground}" CornerRadius="3" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center"
                                             ToolTip="{Binding [Tip_StatusNotProbed], Source={x:Static svc:LocalizationManager.Instance}}">
-                                        <TextBlock Text="{Binding StatusDisplay}" Foreground="{Binding StatusBadgeForeground}" FontSize="11" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding StatusDisplay}" Foreground="{Binding StatusBadgeForeground}" FontWeight="SemiBold"/>
                                     </Border>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTextColumn Header="{Binding [Col_ExpiresOn], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding ExpiresOnDisplay}" Width="100" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="{Binding [Col_Note1], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding CustomNote1}" Width="100" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="{Binding [Col_Note2], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding CustomNote2}" Width="100" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="{Binding [Col_Note3], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding CustomNote3}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn x:Name="ColExpiresOn" Header="{Binding [Col_ExpiresOn], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding ExpiresOnDisplay}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn x:Name="ColNote1" Header="{Binding [Col_Note1], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding CustomNote1}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn x:Name="ColNote2" Header="{Binding [Col_Note2], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding CustomNote2}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn x:Name="ColNote3" Header="{Binding [Col_Note3], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding CustomNote3}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn x:Name="ColNote4" Header="{Binding [Col_Note4], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding CustomNote4}" Width="100" IsReadOnly="True"/>
 
                         <!-- 模板列：可点击打开连接方案抽屉 -->
-                        <DataGridTemplateColumn Header="{Binding [Col_Template], Source={x:Static svc:LocalizationManager.Instance}}" Width="100" SortMemberPath="TemplateName">
+                        <DataGridTemplateColumn x:Name="ColTemplate" Header="{Binding [Col_Template], Source={x:Static svc:LocalizationManager.Instance}}" Width="100" SortMemberPath="TemplateName">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Button Content="{Binding TemplateName}"
@@ -351,10 +391,10 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTextColumn Header="{Binding [Col_Protocol], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Protocol}" Width="60" IsReadOnly="True"/>
+                        <DataGridTextColumn x:Name="ColProtocol" Header="{Binding [Col_Protocol], Source={x:Static svc:LocalizationManager.Instance}}" Binding="{Binding Protocol}" Width="60" IsReadOnly="True"/>
 
                         <!-- 操作列固定放在最后 -->
-                        <DataGridTemplateColumn Header="{Binding [Col_Action], Source={x:Static svc:LocalizationManager.Instance}}" Width="100" CanUserSort="False">
+                        <DataGridTemplateColumn x:Name="ColAction" Header="{Binding [Col_Action], Source={x:Static svc:LocalizationManager.Instance}}" Width="100" CanUserSort="False">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
@@ -431,6 +471,15 @@
 
                 <!-- 会话工作台面板 (默认隐藏，切换时显示) -->
                 <controls:SessionWorkspaceControl x:Name="SessionWorkspace" Visibility="Collapsed"/>
+
+                <!-- 帮助手册 (默认隐藏，切换时显示) -->
+                <controls:HelpManualView x:Name="HelpManual" Visibility="Collapsed"/>
+
+                <!-- 设置 (默认隐藏，切换时显示) -->
+                <controls:SettingsView x:Name="SettingsView" Visibility="Collapsed"/>
+
+                <!-- 连接方案模板管理 (默认隐藏，切换时显示) -->
+                <local:TemplateManagementView x:Name="TemplateManagement" Visibility="Collapsed"/>
 
                 <!-- 侧边浮层抽屉：连接方案配置 (ConnectionSettingsDrawer) -->
                 <local:ConnectionSettingsDrawer x:Name="SettingsDrawer" Grid.Column="1" HorizontalAlignment="Right" Width="420" Margin="0,0,0,0" Panel.ZIndex="99" Visibility="Collapsed"/>

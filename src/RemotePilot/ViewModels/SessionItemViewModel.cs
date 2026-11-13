@@ -41,7 +41,15 @@ public class SessionItemViewModel : INotifyPropertyChanged
     public string Name => Asset.Name;
     public string Protocol => Asset.Protocol;
     public string HostPort => $"{Asset.Host}:{Asset.Port}";
-    public string Username => !string.IsNullOrEmpty(Asset.Username) ? Asset.Username : (Protocol.Equals("SSH", StringComparison.OrdinalIgnoreCase) ? "root" : "Administrator");
+    public string Username => !string.IsNullOrEmpty(Asset.Username)
+        ? Asset.Username
+        : Protocol.ToLowerInvariant() switch
+        {
+            "ssh" => "root",
+            // VNC 的认证只针对会话本身，没有用户名概念
+            "vnc" => "-",
+            _ => "Administrator"
+        };
 
     public SessionStatusKind StatusKind => _statusKind;
 

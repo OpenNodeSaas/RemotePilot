@@ -75,4 +75,11 @@ public sealed record ServerAsset
         get => CustomNotes.TryGetValue("CustomNote3", out var val) ? val : "";
         init => CustomNotes["CustomNote3"] = value;
     }
+
+    [JsonIgnore]
+    public string CustomNote4
+    {
+        get => CustomNotes.TryGetValue("CustomNote4", out var val) ? val : "";
+        init => CustomNotes["CustomNote4"] = value;
+    }
 }

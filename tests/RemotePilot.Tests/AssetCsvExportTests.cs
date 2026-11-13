@@ -10,7 +10,7 @@ public class AssetCsvExportTests
 {
     // 默认（密码未勾选）导出表头，顺序固定
     private const string DefaultHeader =
-        "分组,服务器名称,服务器IP和端口,账号,到期时间,负责人,其他备注1,其他备注2,其他备注3,协议,端口";
+        "分组,服务器名称,服务器IP和端口,账号,到期时间,负责人,其他备注1,其他备注2,其他备注3,其他备注4,协议,端口";
 
     private static string[] GetLines(string csv) =>
         csv.Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -117,6 +117,7 @@ public class AssetCsvExportTests
             Note1 = false,
             Note2 = false,
             Note3 = false,
+            Note4 = false,
             Protocol = false,
             Port = false
         };
@@ -180,5 +181,42 @@ public class AssetCsvExportTests
         var csv = AssetCsvService.ExportCsv(assets);
 
         Assert.Equal(assets.Length + 1, GetLines(csv).Length);
+    }
+
+    [Fact]
+    public void Note4_ExportContainsValue_AndRoundTripsThroughImport()
+    {
+        var asset = SampleAsset() with { CustomNote4 = "备注4内容" };
+
+        var csv = AssetCsvService.ExportCsv([asset]);
+        Assert.Contains("其他备注4", GetLines(csv)[0]);
+        Assert.Contains("\"备注4内容\"", csv);
+
+        var result = AssetCsvService.ImportCsv(csv);
+        var imported = Assert.Single(result.Assets);
+        Assert.Equal("备注4内容", imported.CustomNote4);
+    }
+
+    [Fact]
+    public void Note4_NotSelected_HeaderExcludesColumn()
+    {
+        var csv = AssetCsvService.ExportCsv([SampleAsset()], new ExportFieldSelection { Note4 = false });
+        var header = GetLines(csv)[0];
+
+        Assert.DoesNotContain("其他备注4", header);
+        Assert.Contains("其他备注3", header);
+    }
+
+    [Theory]
+    [InlineData("Note4")]
+    [InlineData("CustomNote4")]
+    public void Note4_HeaderAlias_Imported(string header)
+    {
+        var csv = "服务器名称,IP和端口," + header + "\nsrv-a,10.0.0.1:3389,别名备注";
+
+        var result = AssetCsvService.ImportCsv(csv);
+        var imported = Assert.Single(result.Assets);
+
+        Assert.Equal("别名备注", imported.CustomNote4);
     }
 }

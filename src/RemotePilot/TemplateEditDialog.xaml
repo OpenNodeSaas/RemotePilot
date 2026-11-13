@@ -36,6 +36,7 @@
                     <ComboBox x:Name="CmbProtocol" Grid.Column="1" SelectedIndex="0" SelectionChanged="CmbProtocol_SelectionChanged">
                         <ComboBoxItem Content="rdp"/>
                         <ComboBoxItem Content="ssh"/>
+                        <ComboBoxItem Content="vnc"/>
                     </ComboBox>
                 </Grid>
 
@@ -101,7 +102,7 @@
                     <WrapPanel Margin="0,2">
                         <CheckBox x:Name="ChkRedirectDrives" Content="{DynamicResource {x:Static local:TemplateEditDialog.ResDriveMap}}" Margin="0,0,10,0"/>
                         <CheckBox x:Name="ChkRedirectAudio" Content="{DynamicResource {x:Static local:TemplateEditDialog.ResAudio}}" Margin="0,0,10,0" IsChecked="True"/>
-                        <CheckBox x:Name="ChkRedirectClipboard" Content="{DynamicResource {x:Static local:TemplateEditDialog.ResClipboard}}" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="ChkRedirectClipboard" Content="{DynamicResource {x:Static local:TemplateEditDialog.ResClipboard}}" Margin="0,0,10,0" IsChecked="True"/>
                     </WrapPanel>
                 </StackPanel>
             </StackPanel>

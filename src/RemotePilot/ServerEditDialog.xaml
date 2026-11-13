@@ -54,6 +54,7 @@
                     <ComboBox x:Name="CmbProtocol" Grid.Column="1" SelectedIndex="0" SelectionChanged="CmbProtocol_SelectionChanged">
                         <ComboBoxItem Content="rdp"/>
                         <ComboBoxItem Content="ssh"/>
+                        <ComboBoxItem Content="vnc"/>
                     </ComboBox>
                 </Grid>
 
@@ -173,12 +174,21 @@
                     <TextBox x:Name="TxtNote3" Grid.Column="1" Padding="4"/>
                 </Grid>
 
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{DynamicResource {x:Static local:ServerEditDialog.ResFldNote4}}" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TxtNote4" Grid.Column="1" Padding="4"/>
+                </Grid>
+
                 <StackPanel x:Name="PanelRdpRedirect">
                     <TextBlock Text="{DynamicResource {x:Static local:ServerEditDialog.ResRdpRedirect}}" FontWeight="SemiBold" Margin="0,8,0,4"/>
                     <WrapPanel Margin="0,2">
                         <CheckBox x:Name="ChkRedirectDrives" Content="{DynamicResource {x:Static local:ServerEditDialog.ResDriveMap}}" Margin="0,0,10,0"/>
                         <CheckBox x:Name="ChkRedirectAudio" Content="{DynamicResource {x:Static local:ServerEditDialog.ResAudio}}" Margin="0,0,10,0" IsChecked="True"/>
-                        <CheckBox x:Name="ChkRedirectClipboard" Content="{DynamicResource {x:Static local:ServerEditDialog.ResClipboard}}" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="ChkRedirectClipboard" Content="{DynamicResource {x:Static local:ServerEditDialog.ResClipboard}}" Margin="0,0,10,0" IsChecked="True"/>
                     </WrapPanel>
                 </StackPanel>
             </StackPanel>

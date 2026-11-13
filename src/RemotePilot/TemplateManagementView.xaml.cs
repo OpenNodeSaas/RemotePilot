@@ -8,7 +8,7 @@ using RemotePilot.Services;
 
 namespace RemotePilot;
 
-public partial class TemplateManagementWindow : Window
+public partial class TemplateManagementView : UserControl
 {
     public const string ResWinTitle = "TmplMgmt_WinTitle";
     public const string ResHeader = "TmplMgmt_Header";
@@ -31,7 +31,7 @@ public partial class TemplateManagementWindow : Window
     public const string ResBtnNew = "Btn_New";
     public const string ResBtnEdit = "Btn_Edit";
     public const string ResBtnCopy = "Btn_Copy";
-    public const string ResBtnDelete = "Btn_Delete";
+    public const string ResBtnDelete = "TmplMgmt_BtnDelete";
     public const string ResBtnClose = "Btn_Close";
 
     private static LocalizationManager L10n => LocalizationManager.Instance;
@@ -41,13 +41,30 @@ public partial class TemplateManagementWindow : Window
     private List<TemplateDisplayItem> _displayItems = new();
     private bool _uiReady;
 
-    public TemplateManagementWindow(AssetStore assetStore)
+    /// <summary>模板数据发生变化（增删改并落盘成功）时触发，供外层刷新引用模板的资产列表。</summary>
+    public event Action? DataChanged;
+
+    /// <summary>用户点击底部「关闭」按钮时触发，由外层切换回资产中心。</summary>
+    public event Action? CloseRequested;
+
+    public TemplateManagementView() : this(new AssetStore())
+    {
+    }
+
+    public TemplateManagementView(AssetStore assetStore)
     {
         InitializeComponent();
         _assetStore = assetStore;
         _data = _assetStore.Load();
         _uiReady = true;
         CmbTemplateSort.SelectedIndex = 0; // 默认按名称排序
+        LoadTemplates();
+    }
+
+    /// <summary>重新从存储加载模板并刷新列表，供外部在切换到本视图时保证数据最新。</summary>
+    public void Reload()
+    {
+        _data = _assetStore.Load();
         LoadTemplates();
     }
 
@@ -140,6 +157,7 @@ public partial class TemplateManagementWindow : Window
             _assetStore.Save(_data);
             LoadTemplates();
             LstTemplates.SelectedItem = _displayItems.FirstOrDefault(i => i.Template.Id == dialog.Result.Id);
+            DataChanged?.Invoke();
         }
     }
 
@@ -157,6 +175,7 @@ public partial class TemplateManagementWindow : Window
                 _assetStore.Save(_data);
                 LoadTemplates();
                 LstTemplates.SelectedItem = _displayItems.FirstOrDefault(i => i.Template.Id == dialog.Result.Id);
+                DataChanged?.Invoke();
             }
         }
     }
@@ -178,6 +197,7 @@ public partial class TemplateManagementWindow : Window
             _assetStore.Save(_data);
             LoadTemplates();
             LstTemplates.SelectedItem = _displayItems.FirstOrDefault(i => i.Template.Id == dialog.Result.Id);
+            DataChanged?.Invoke();
         }
     }
 
@@ -210,13 +230,22 @@ public partial class TemplateManagementWindow : Window
         }
 
         _data.Templates.RemoveAll(t => t.Id == item.Template.Id);
+        // 同步清除引用了该模板的资产绑定，避免悬空引用导致连接异常
+        for (int i = 0; i < _data.Assets.Count; i++)
+        {
+            if (_data.Assets[i].TemplateId == item.Template.Id)
+            {
+                _data.Assets[i] = _data.Assets[i] with { TemplateId = null };
+            }
+        }
         _assetStore.Save(_data);
         LoadTemplates();
+        DataChanged?.Invoke();
     }
 
     private void BtnClose_Click(object sender, RoutedEventArgs e)
     {
-        Close();
+        CloseRequested?.Invoke();
     }
 
     private class TemplateDisplayItem
