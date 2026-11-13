@@ -249,6 +249,7 @@ public partial class MainWindow : Window
     public const string ResBtnQuickConnect = "Btn_QuickConnect";
     public const string ResBtnExpiryBanner = "Btn_ExpiryBanner";
     public const string ResBtnBatchProbe = "Btn_BatchProbe";
+    public const string ResBtnAssetDetails = "Btn_AssetDetails";
     public const string ResTipFavorite = "Tip_Favorite";
     public const string ResSettingWindowMode = "Setting_WindowMode";
     public const string ResSettingModeNormal = "Setting_ModeNormal";
@@ -287,6 +288,7 @@ public partial class MainWindow : Window
     public const string ResBtnSplitH = "Btn_SplitH";
     public const string ResBtnSplitV = "Btn_SplitV";
     public const string ResBtnResetResolution = "Btn_ResetResolution";
+    public const string ResSettingSshWindowSize = "Setting_SshWindowSize";
     public const string ResSettingProbeInterval = "Setting_ProbeInterval";
     public const string ResSettingRememberPassword = "Setting_RememberPassword";
     public const string ResSettingRememberPasswordHint = "Setting_RememberPasswordHint";
@@ -487,12 +489,13 @@ public partial class MainWindow : Window
     private void BtnToggleTheme_Click(object sender, RoutedEventArgs e) => ThemeManager.Instance.ToggleTheme();
     private void BtnToggleLang_Click(object sender, RoutedEventArgs e) => LocalizationManager.Instance.ToggleLanguage();
 
+    /// <summary>展开或收起右侧详情面板（顶栏按钮与面板内的收起按钮共用）。</summary>
     private void BtnToggleDetails_Click(object sender, RoutedEventArgs e)
     {
         SetDetailsPanelCollapsed(ColDetailsPanel.Width.Value > 0);
     }
 
-    /// <summary>收起时整块隐藏；单击列表行会重新展开。</summary>
+    /// <summary>收起时整块隐藏；展开由顶栏「资产详情」按钮触发。</summary>
     private void SetDetailsPanelCollapsed(bool collapsed)
     {
         ColDetailsPanel.Width = new GridLength(collapsed ? 0 : 300);
@@ -502,14 +505,6 @@ public partial class MainWindow : Window
         TxtDetailsTitle.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         BtnToggleDetails.Content = collapsed ? "◀" : L10n["Btn_Collapse"];
         BtnToggleDetails.HorizontalAlignment = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Right;
-    }
-
-    private void EnsureDetailsPanelExpanded()
-    {
-        if (ColDetailsPanel.Width.Value <= 0 || DetailsScroll.Visibility != Visibility.Visible)
-        {
-            SetDetailsPanelCollapsed(false);
-        }
     }
 
     /// <summary>切换左侧导航折叠状态：更新布局并持久化。</summary>
@@ -559,12 +554,14 @@ public partial class MainWindow : Window
         TxtNavGroupsLabel.Visibility = textVis;
         TxtNavGroupsChevron.Visibility = textVis;
         TxtNavTemplatesLabel.Visibility = textVis;
+        TxtNavHelpLabel.Visibility = textVis;
+        TxtNavSettingsLabel.Visibility = textVis;
 
         if (collapsed) PanelNavGroups.Visibility = Visibility.Collapsed;
 
         var align = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Left;
         var padding = collapsed ? new Thickness(0, 14, 0, 14) : new Thickness(14, 14, 14, 14);
-        foreach (var btn in new[] { NavBtnAssets, NavBtnSessions, NavBtnFavorites, NavBtnRecent, NavBtnTemplates })
+        foreach (var btn in new[] { NavBtnAssets, NavBtnSessions, NavBtnFavorites, NavBtnRecent, NavBtnTemplates, NavBtnHelp, NavBtnSettings })
         {
             btn.HorizontalContentAlignment = align;
             btn.Padding = padding;
@@ -1692,67 +1689,100 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>当前生效的尺寸输入框：SSH 资产用独立窗口尺寸，其余用 RDP 分辨率。</summary>
+    private (TextBox Width, TextBox Height) SizeTargets =>
+        PanelSshWindowSize.Visibility == Visibility.Visible ? (TxtSshWidth, TxtSshHeight) : (TxtWidth, TxtHeight);
+
     private void BtnResetResolution_Click(object sender, RoutedEventArgs e)
     {
-        TxtWidth.Text = "1920";
-        TxtHeight.Text = "1080";
+        var (width, height) = SizeTargets;
+        if (ReferenceEquals(width, TxtSshWidth))
+        {
+            width.Text = SshWindow.DefaultWidth.ToString();
+            height.Text = SshWindow.DefaultHeight.ToString();
+        }
+        else
+        {
+            width.Text = "1920";
+            height.Text = "1080";
+        }
     }
 
     private void BtnScreen14_Click(object sender, RoutedEventArgs e)
     {
         var primaryWidth = (int)SystemParameters.PrimaryScreenWidth;
         var primaryHeight = (int)SystemParameters.PrimaryScreenHeight;
-        TxtWidth.Text = (primaryWidth / 2).ToString();
-        TxtHeight.Text = (primaryHeight / 2).ToString();
+        var (width, height) = SizeTargets;
+        width.Text = (primaryWidth / 2).ToString();
+        height.Text = (primaryHeight / 2).ToString();
     }
 
     private void BtnScreen16_Click(object sender, RoutedEventArgs e)
     {
         var primaryWidth = (int)SystemParameters.PrimaryScreenWidth;
         var primaryHeight = (int)SystemParameters.PrimaryScreenHeight;
-        TxtWidth.Text = (primaryWidth / 3).ToString();
-        TxtHeight.Text = (primaryHeight / 2).ToString();
+        var (width, height) = SizeTargets;
+        width.Text = (primaryWidth / 3).ToString();
+        height.Text = (primaryHeight / 2).ToString();
     }
 
     private void BtnScreen19_Click(object sender, RoutedEventArgs e)
     {
         var primaryWidth = (int)SystemParameters.PrimaryScreenWidth;
         var primaryHeight = (int)SystemParameters.PrimaryScreenHeight;
-        TxtWidth.Text = (primaryWidth / 3).ToString();
-        TxtHeight.Text = (primaryHeight / 3).ToString();
+        var (width, height) = SizeTargets;
+        width.Text = (primaryWidth / 3).ToString();
+        height.Text = (primaryHeight / 3).ToString();
     }
 
     private void BtnSplitH_Click(object sender, RoutedEventArgs e)
     {
         var primaryWidth = (int)SystemParameters.PrimaryScreenWidth;
         var primaryHeight = (int)SystemParameters.PrimaryScreenHeight;
-        TxtWidth.Text = (primaryWidth / 2).ToString();
-        TxtHeight.Text = primaryHeight.ToString();
+        var (width, height) = SizeTargets;
+        width.Text = (primaryWidth / 2).ToString();
+        height.Text = primaryHeight.ToString();
     }
 
     private void BtnSplitV_Click(object sender, RoutedEventArgs e)
     {
         var primaryWidth = (int)SystemParameters.PrimaryScreenWidth;
         var primaryHeight = (int)SystemParameters.PrimaryScreenHeight;
-        TxtWidth.Text = primaryWidth.ToString();
-        TxtHeight.Text = (primaryHeight / 2).ToString();
+        var (width, height) = SizeTargets;
+        width.Text = primaryWidth.ToString();
+        height.Text = (primaryHeight / 2).ToString();
     }
 
     private void BtnSaveSettings_Click(object sender, RoutedEventArgs e)
     {
-        // 将详情面板中的分辨率快速配置写回当前选中的 RDP 资产
-        if (GridAssets.SelectedItem is ServerAssetViewModel vm
-            && !_inspectorProtocol.Equals("ssh", StringComparison.OrdinalIgnoreCase)
-            && PanelRdpResolution.Visibility == Visibility.Visible)
+        // 将详情面板中的快速配置写回当前选中的资产：RDP 存分辨率，SSH 存独立窗口尺寸
+        if (GridAssets.SelectedItem is ServerAssetViewModel vm)
         {
-            int? rdpWidth = int.TryParse(TxtWidth.Text.Trim(), out var parsedW) && parsedW > 0 ? parsedW : null;
-            int? rdpHeight = int.TryParse(TxtHeight.Text.Trim(), out var parsedH) && parsedH > 0 ? parsedH : null;
-            vm.Model = vm.Model with { RdpWidth = rdpWidth, RdpHeight = rdpHeight };
+            if (_inspectorProtocol.Equals("ssh", StringComparison.OrdinalIgnoreCase)
+                && PanelSshWindowSize.Visibility == Visibility.Visible)
+            {
+                vm.Model = vm.Model with
+                {
+                    SshWindowWidth = ParsePositiveInt(TxtSshWidth.Text),
+                    SshWindowHeight = ParsePositiveInt(TxtSshHeight.Text)
+                };
+            }
+            else if (PanelRdpResolution.Visibility == Visibility.Visible)
+            {
+                vm.Model = vm.Model with
+                {
+                    RdpWidth = ParsePositiveInt(TxtWidth.Text),
+                    RdpHeight = ParsePositiveInt(TxtHeight.Text)
+                };
+            }
         }
 
         SaveAssetsToStore();
         MessageBox.Show(L10n["Msg_SettingsSaved"], L10n["Msg_Tip"], MessageBoxButton.OK, MessageBoxImage.Information);
     }
+
+    private static int? ParsePositiveInt(string text) =>
+        int.TryParse(text.Trim(), out var value) && value > 0 ? value : null;
 
     /// <summary>留下宝贵意见：优先拉起本机邮件客户端；没有可用客户端时把邮箱直接展示出来。</summary>
     private void BtnFeedback_Click(object sender, RoutedEventArgs e)
@@ -2001,7 +2031,20 @@ public partial class MainWindow : Window
                 if (_sshStandaloneWindow)
                 {
                     // 独立窗口模式：不加入工作台、不跳转工作台，主窗口保持当前视图
-                    var sshWindow = new SshWindow(assetToLaunch, password, keyPath, null, jumpAsset, jumpPassword) { Owner = this };
+                    // 窗口尺寸优先级：资产配置 → 绑定模板 → 默认尺寸
+                    ConnectionTemplate? sshTemplate = null;
+                    if (assetToLaunch.TemplateId is Guid sshTemplateId)
+                    {
+                        sshTemplate = _assetStore.Load().Templates.FirstOrDefault(t => t.Id == sshTemplateId);
+                    }
+
+                    var sshAsset = assetToLaunch with
+                    {
+                        SshWindowWidth = assetToLaunch.SshWindowWidth ?? sshTemplate?.SshWindowWidth,
+                        SshWindowHeight = assetToLaunch.SshWindowHeight ?? sshTemplate?.SshWindowHeight
+                    };
+
+                    var sshWindow = new SshWindow(sshAsset, password, keyPath, null, jumpAsset, jumpPassword) { Owner = this };
                     sshWindow.Show();
                     TxtStatusBarInfo.Text = L10n.Format("Status_SshOpened", assetToLaunch.Name);
                 }
@@ -2140,6 +2183,12 @@ public partial class MainWindow : Window
         var asset = sessionVm.Asset;
         if (!string.Equals(asset.Protocol, "ssh", StringComparison.OrdinalIgnoreCase)) return;
 
+        // 失败原因统一显示在底部状态栏；详情面板保持收起，不自动弹出
+        if (!string.IsNullOrEmpty(error))
+        {
+            TxtStatusBarInfo.Text = L10n.Format("Status_ConnectFailed", error);
+        }
+
         // 仅当失败疑似认证失败才回退；网络不可达等错误不弹窗
         if (string.IsNullOrEmpty(error)) return;
         bool looksAuthFailure = error.Contains("auth", StringComparison.OrdinalIgnoreCase)
@@ -2221,7 +2270,6 @@ public partial class MainWindow : Window
 
         if (GridAssets.SelectedItem is ServerAssetViewModel vm)
         {
-            EnsureDetailsPanelExpanded();
             PanelInspectorForm.Visibility = Visibility.Visible;
             InspectorPlaceholder.Visibility = Visibility.Collapsed;
 
@@ -2229,10 +2277,12 @@ public partial class MainWindow : Window
             _inspectorProtocol = string.IsNullOrWhiteSpace(vm.Model.Protocol) ? "rdp" : vm.Model.Protocol;
             InspectorTxtTarget.Text = $"{_inspectorProtocol} · {vm.Model.Host}:{vm.Model.Port}";
 
-            // 按协议仅显示对应参数（SSH 资产隐藏 RDP 专属的分辨率设置）
+            // 按协议仅显示对应参数（SSH 显示独立窗口尺寸，RDP 显示分辨率）
             ApplyInspectorProtocolVisibility();
             TxtWidth.Text = (vm.Model.RdpWidth ?? 1920).ToString();
             TxtHeight.Text = (vm.Model.RdpHeight ?? 1080).ToString();
+            TxtSshWidth.Text = (vm.Model.SshWindowWidth ?? SshWindow.DefaultWidth).ToString();
+            TxtSshHeight.Text = (vm.Model.SshWindowHeight ?? SshWindow.DefaultHeight).ToString();
 
             // 到期预警状态
             if (vm.Model.ExpiresOn.HasValue)
@@ -2281,11 +2331,11 @@ public partial class MainWindow : Window
 
     private void ApplyInspectorProtocolVisibility()
     {
-        // SSH 与 VNC 都没有 RDP 的分辨率设置（VNC 由外装客户端自己控制缩放）
+        // SSH 用独立窗口尺寸代替 RDP 分辨率；VNC 由外装客户端自己控制缩放，两者都不显示分辨率
         var protocol = _inspectorProtocol;
-        PanelRdpResolution.Visibility = protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase)
-            || protocol.Equals("vnc", StringComparison.OrdinalIgnoreCase)
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        var isSsh = protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase);
+        var isVnc = protocol.Equals("vnc", StringComparison.OrdinalIgnoreCase);
+        PanelRdpResolution.Visibility = isSsh || isVnc ? Visibility.Collapsed : Visibility.Visible;
+        PanelSshWindowSize.Visibility = isSsh ? Visibility.Visible : Visibility.Collapsed;
     }
 }

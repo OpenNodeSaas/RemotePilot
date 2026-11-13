@@ -23,6 +23,10 @@ public sealed record ConnectionTemplate
 
     // SSH 密钥路径 (仅存本地路径，绝不存密钥明文)
     public string SshKeyPath { get; init; } = "";
+
+    // SSH 独立窗口模式的初始窗口尺寸
+    public int SshWindowWidth { get; init; } = 1000;
+    public int SshWindowHeight { get; init; } = 640;
     public bool IsDefault { get; init; }
 
     // 资产同步扩展字段

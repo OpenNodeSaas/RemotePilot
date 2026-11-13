@@ -21,6 +21,12 @@ public partial class ConnectionSettingsDrawer : UserControl
     public const string ResParamSource = "Drawer_ParamSource";
     public const string ResSourceCustom = "Drawer_SourceCustom";
     public const string ResSec2 = "Drawer_Sec2";
+    public const string ResSshWindowSize = "Setting_SshWindowSize";
+    public const string ResScreen14 = "Btn_Screen14";
+    public const string ResScreen16 = "Btn_Screen16";
+    public const string ResScreen19 = "Btn_Screen19";
+    public const string ResSplitH = "Btn_SplitH";
+    public const string ResSplitV = "Btn_SplitV";
     public const string ResResolutionMode = "Drawer_ResolutionMode";
     public const string ResResFit = "Drawer_ResFit";
     public const string ResRes1080p = "Drawer_Res1080p";
@@ -177,22 +183,27 @@ public partial class ConnectionSettingsDrawer : UserControl
         if (asset.Protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase))
         {
             PanelRdpOnly.Visibility = Visibility.Collapsed;
+            PanelSshWindowOnly.Visibility = Visibility.Visible;
             PanelRdpSpecific.Visibility = Visibility.Collapsed;
             PanelSshSpecific.Visibility = Visibility.Visible;
             TxtSshPort.Text = asset.Port.ToString();
             TxtSshUsername.Text = asset.Username;
             TxtSshKeyPath.Text = asset.SshKeyPath ?? string.Empty;
+            TxtSshWidth.Text = (asset.SshWindowWidth ?? _currentTemplate?.SshWindowWidth ?? SshWindow.DefaultWidth).ToString();
+            TxtSshHeight.Text = (asset.SshWindowHeight ?? _currentTemplate?.SshWindowHeight ?? SshWindow.DefaultHeight).ToString();
         }
         else if (asset.Protocol.Equals("vnc", StringComparison.OrdinalIgnoreCase))
         {
             // VNC 连接参数由外装客户端决定，这里不提供 RDP/SSH 专属项
             PanelRdpOnly.Visibility = Visibility.Collapsed;
+            PanelSshWindowOnly.Visibility = Visibility.Collapsed;
             PanelRdpSpecific.Visibility = Visibility.Collapsed;
             PanelSshSpecific.Visibility = Visibility.Collapsed;
         }
         else
         {
             PanelRdpOnly.Visibility = Visibility.Visible;
+            PanelSshWindowOnly.Visibility = Visibility.Collapsed;
             PanelRdpSpecific.Visibility = Visibility.Visible;
             PanelSshSpecific.Visibility = Visibility.Collapsed;
             TxtRdpGateway.Text = _currentTemplate?.RdpGateway ?? string.Empty;
@@ -229,21 +240,26 @@ public partial class ConnectionSettingsDrawer : UserControl
         if (template.Protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase))
         {
             PanelRdpOnly.Visibility = Visibility.Collapsed;
+            PanelSshWindowOnly.Visibility = Visibility.Visible;
             PanelRdpSpecific.Visibility = Visibility.Collapsed;
             PanelSshSpecific.Visibility = Visibility.Visible;
             TxtSshPort.Text = template.Port.ToString();
             TxtSshUsername.Text = template.Username;
             TxtSshKeyPath.Text = template.SshKeyPath ?? string.Empty;
+            TxtSshWidth.Text = template.SshWindowWidth.ToString();
+            TxtSshHeight.Text = template.SshWindowHeight.ToString();
         }
         else if (template.Protocol.Equals("vnc", StringComparison.OrdinalIgnoreCase))
         {
             PanelRdpOnly.Visibility = Visibility.Collapsed;
+            PanelSshWindowOnly.Visibility = Visibility.Collapsed;
             PanelRdpSpecific.Visibility = Visibility.Collapsed;
             PanelSshSpecific.Visibility = Visibility.Collapsed;
         }
         else
         {
             PanelRdpOnly.Visibility = Visibility.Visible;
+            PanelSshWindowOnly.Visibility = Visibility.Collapsed;
             PanelRdpSpecific.Visibility = Visibility.Visible;
             PanelSshSpecific.Visibility = Visibility.Collapsed;
             TxtRdpGateway.Text = template.RdpGateway;
@@ -443,6 +459,8 @@ public partial class ConnectionSettingsDrawer : UserControl
                 TxtSshPort.Text = tmpl.Port.ToString();
                 TxtSshUsername.Text = tmpl.Username;
                 TxtSshKeyPath.Text = tmpl.SshKeyPath;
+                TxtSshWidth.Text = tmpl.SshWindowWidth.ToString();
+                TxtSshHeight.Text = tmpl.SshWindowHeight.ToString();
             }
             else
             {
@@ -500,6 +518,8 @@ public partial class ConnectionSettingsDrawer : UserControl
                 colorDepth = cd;
             }
 
+            var isSsh = _currentAsset.Protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase);
+
             // Update asset properties
             var updatedModel = _currentAsset with
             {
@@ -507,12 +527,15 @@ public partial class ConnectionSettingsDrawer : UserControl
                 RdpWidth = width,
                 RdpHeight = height,
                 RdpColorDepth = colorDepth,
+                // SSH 资产的窗口尺寸单独存储，独立窗口打开时按此尺寸
+                SshWindowWidth = isSsh ? ParsePositiveInt(TxtSshWidth.Text) : _currentAsset.SshWindowWidth,
+                SshWindowHeight = isSsh ? ParsePositiveInt(TxtSshHeight.Text) : _currentAsset.SshWindowHeight,
                 RedirectDrives = ChkDriveMap.IsChecked ?? false,
                 RedirectAudio = ChkAudio.IsChecked ?? true,
                 RedirectClipboard = ChkClipboard.IsChecked ?? true,
                 SshKeyPath = TxtSshKeyPath.Text,
-                Port = _currentAsset.Protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase) && int.TryParse(TxtSshPort.Text, out var sp) ? sp : _currentAsset.Port,
-                Username = _currentAsset.Protocol.Equals("ssh", StringComparison.OrdinalIgnoreCase) ? TxtSshUsername.Text : _currentAsset.Username
+                Port = isSsh && int.TryParse(TxtSshPort.Text, out var sp) ? sp : _currentAsset.Port,
+                Username = isSsh ? TxtSshUsername.Text : _currentAsset.Username
             };
 
             _currentAsset = updatedModel;
@@ -520,6 +543,29 @@ public partial class ConnectionSettingsDrawer : UserControl
         }
 
         Visibility = Visibility.Collapsed;
+    }
+
+    private static int? ParsePositiveInt(string text) =>
+        int.TryParse(text.Trim(), out var value) && value > 0 ? value : null;
+
+    private void BtnSshWindowPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string preset }) return;
+
+        var primaryWidth = (int)SystemParameters.PrimaryScreenWidth;
+        var primaryHeight = (int)SystemParameters.PrimaryScreenHeight;
+
+        var (width, height) = preset switch
+        {
+            "quarter" => (primaryWidth / 2, primaryHeight / 2),
+            "sixth" => (primaryWidth / 3, primaryHeight / 2),
+            "ninth" => (primaryWidth / 3, primaryHeight / 3),
+            "splith" => (primaryWidth / 2, primaryHeight),
+            _ => (primaryWidth, primaryHeight / 2)
+        };
+
+        TxtSshWidth.Text = width.ToString();
+        TxtSshHeight.Text = height.ToString();
     }
 
     private void BtnSaveAsTemplate_Click(object sender, RoutedEventArgs e)
@@ -543,6 +589,8 @@ public partial class ConnectionSettingsDrawer : UserControl
             RdpHeight = height,
             RdpColorDepth = colorDepth,
             RdpGateway = TxtRdpGateway.Text,
+            SshWindowWidth = ParsePositiveInt(TxtSshWidth.Text) ?? SshWindow.DefaultWidth,
+            SshWindowHeight = ParsePositiveInt(TxtSshHeight.Text) ?? SshWindow.DefaultHeight,
             RedirectDrives = ChkDriveMap.IsChecked ?? false,
             RedirectAudio = ChkAudio.IsChecked ?? true,
             RedirectClipboard = ChkClipboard.IsChecked ?? true,

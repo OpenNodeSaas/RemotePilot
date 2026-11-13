@@ -56,6 +56,34 @@
                     </StackPanel>
                 </Border>
 
+                <!-- 2. 显示设置（SSH 独立窗口尺寸） -->
+                <StackPanel x:Name="PanelSshWindowOnly" Visibility="Collapsed">
+                    <TextBlock Text="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResSec2}}" FontWeight="Bold" FontSize="13" Margin="0,0,0,8" Foreground="{DynamicResource Primary}"/>
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResSshWindowSize}}" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource AppForeground}"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,6">
+                            <StackPanel Margin="0,0,4,0">
+                                <TextBlock Text="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResWidth}}" FontSize="11" Foreground="{DynamicResource MutedForeground}"/>
+                                <TextBox x:Name="TxtSshWidth" Text="1000" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TxtResolution_TextChanged"/>
+                            </StackPanel>
+                            <StackPanel Margin="4,0,0,0">
+                                <TextBlock Text="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResHeight}}" FontSize="11" Foreground="{DynamicResource MutedForeground}"/>
+                                <TextBox x:Name="TxtSshHeight" Text="640" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TxtResolution_TextChanged"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <UniformGrid Columns="3" Margin="0,0,0,6">
+                            <Button Content="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResScreen14}}" Tag="quarter" Style="{StaticResource ModernButtonStyle}" Padding="2" Margin="2" Click="BtnSshWindowPreset_Click"/>
+                            <Button Content="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResScreen16}}" Tag="sixth" Style="{StaticResource ModernButtonStyle}" Padding="2" Margin="2" Click="BtnSshWindowPreset_Click"/>
+                            <Button Content="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResScreen19}}" Tag="ninth" Style="{StaticResource ModernButtonStyle}" Padding="2" Margin="2" Click="BtnSshWindowPreset_Click"/>
+                        </UniformGrid>
+                        <UniformGrid Columns="2">
+                            <Button Content="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResSplitH}}" Tag="splith" Style="{StaticResource ModernButtonStyle}" Padding="2" Margin="2" Click="BtnSshWindowPreset_Click"/>
+                            <Button Content="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResSplitV}}" Tag="splitv" Style="{StaticResource ModernButtonStyle}" Padding="2" Margin="2" Click="BtnSshWindowPreset_Click"/>
+                        </UniformGrid>
+                    </StackPanel>
+                </StackPanel>
+
                 <!-- 2. 显示设置（RDP 专属） -->
                 <StackPanel x:Name="PanelRdpOnly">
                 <TextBlock Text="{DynamicResource {x:Static local:ConnectionSettingsDrawer.ResSec2}}" FontWeight="Bold" FontSize="13" Margin="0,0,0,8" Foreground="{DynamicResource Primary}"/>

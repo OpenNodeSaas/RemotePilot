@@ -105,6 +105,24 @@
                         <CheckBox x:Name="ChkRedirectClipboard" Content="{DynamicResource {x:Static local:TemplateEditDialog.ResClipboard}}" Margin="0,0,10,0" IsChecked="True"/>
                     </WrapPanel>
                 </StackPanel>
+
+                <!-- SSH 专属：独立窗口模式的初始窗口尺寸 -->
+                <StackPanel x:Name="PanelSshSettings" Visibility="Collapsed">
+                    <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResSshSettings}}"
+                               FontWeight="SemiBold" Margin="0,12,0,8"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{DynamicResource {x:Static local:TemplateEditDialog.ResFldSshWindowSize}}" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TxtSshWindowWidth" Grid.Column="1" Text="1000" Padding="4"/>
+                        <TextBlock Text="x" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TxtSshWindowHeight" Grid.Column="3" Text="640" Padding="4"/>
+                    </Grid>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 

@@ -19,6 +19,8 @@ public partial class TemplateEditDialog : Window
     public const string ResFldColorDepth = "TmplMgmt_ColorDepth";
     public const string ResFldGateway = "TmplMgmt_Gateway";
     public const string ResRdpRedirect = "Dlg_RdpRedirect";
+    public const string ResSshSettings = "TmplMgmt_SshSettings";
+    public const string ResFldSshWindowSize = "Setting_SshWindowSize";
     public const string ResDriveMap = "Dlg_DriveMap";
     public const string ResAudio = "Dlg_Audio";
     public const string ResClipboard = "Dlg_Clipboard";
@@ -65,6 +67,8 @@ public partial class TemplateEditDialog : Window
             }
 
             TxtRdpGateway.Text = existing.RdpGateway;
+            TxtSshWindowWidth.Text = existing.SshWindowWidth.ToString();
+            TxtSshWindowHeight.Text = existing.SshWindowHeight.ToString();
             ChkRedirectDrives.IsChecked = existing.RedirectDrives;
             ChkRedirectAudio.IsChecked = existing.RedirectAudio;
             ChkRedirectClipboard.IsChecked = existing.RedirectClipboard;
@@ -82,6 +86,8 @@ public partial class TemplateEditDialog : Window
         var isVnc = proto.Equals("vnc", StringComparison.OrdinalIgnoreCase);
         // VNC 不使用 RDP 的分辨率/网关/重定向
         PanelRdpSettings.Visibility = isSsh || isVnc ? Visibility.Collapsed : Visibility.Visible;
+        // SSH 独立窗口模式才有窗口尺寸
+        PanelSshSettings.Visibility = isSsh ? Visibility.Visible : Visibility.Collapsed;
 
         var port = TxtPort.Text.Trim();
         if (port.Length == 0 || port == "3389" || port == "22" || port == "5900")
@@ -137,6 +143,33 @@ public partial class TemplateEditDialog : Window
         var colorDepth = int.Parse((CmbColorDepth.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "32");
         var protocol = (CmbProtocol.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "rdp";
 
+        // SSH 模板额外校验独立窗口尺寸（仅在 SSH 面板可见时生效）
+        int sshWidth = 0, sshHeight = 0;
+        if (PanelSshSettings.Visibility == Visibility.Visible)
+        {
+            if (!int.TryParse(TxtSshWindowWidth.Text, out sshWidth) || sshWidth < 320 || sshWidth > 7680)
+            {
+                MessageBox.Show(
+                    L10n["TmplEdit_InvalidWidth"] ?? "宽度必须在 640-7680 之间",
+                    L10n["TmplEdit_ValidationError"] ?? "验证错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                TxtSshWindowWidth.Focus();
+                return;
+            }
+
+            if (!int.TryParse(TxtSshWindowHeight.Text, out sshHeight) || sshHeight < 240 || sshHeight > 4320)
+            {
+                MessageBox.Show(
+                    L10n["TmplEdit_InvalidHeight"] ?? "高度必须在 480-4320 之间",
+                    L10n["TmplEdit_ValidationError"] ?? "验证错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                TxtSshWindowHeight.Focus();
+                return;
+            }
+        }
+
         Result = (_existing ?? new ConnectionTemplate()) with
         {
             Name = TxtName.Text.Trim(),
@@ -147,6 +180,8 @@ public partial class TemplateEditDialog : Window
             RdpHeight = height,
             RdpColorDepth = colorDepth,
             RdpGateway = TxtRdpGateway.Text.Trim(),
+            SshWindowWidth = sshWidth > 0 ? sshWidth : (_existing?.SshWindowWidth ?? 1000),
+            SshWindowHeight = sshHeight > 0 ? sshHeight : (_existing?.SshWindowHeight ?? 640),
             RedirectDrives = ChkRedirectDrives.IsChecked == true,
             RedirectAudio = ChkRedirectAudio.IsChecked == true,
             RedirectClipboard = ChkRedirectClipboard.IsChecked == true

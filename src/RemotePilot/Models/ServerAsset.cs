@@ -34,6 +34,10 @@ public sealed record ServerAsset
     // SSH 密钥路径 (仅本地路径)
     public string SshKeyPath { get; init; } = "";
 
+    // SSH 独立窗口模式的初始窗口尺寸（为空时用默认尺寸）
+    public int? SshWindowWidth { get; init; }
+    public int? SshWindowHeight { get; init; }
+
     // 探测与同步扩展字段
     public DateTimeOffset? LastProbeAt { get; init; }
     public bool? LastProbeReachable { get; init; }

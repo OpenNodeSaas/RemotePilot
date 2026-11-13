@@ -288,6 +288,7 @@
                     <WrapPanel x:Name="PanelGroupBadges" Orientation="Horizontal" VerticalAlignment="Center"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="BtnBatchProbe" Content="{DynamicResource {x:Static local:MainWindow.ResBtnBatchProbe}}" Style="{StaticResource ModernButtonStyle}" Padding="10,4" Margin="4,0" Click="BtnBatchProbe_Click"/>
+                        <Button x:Name="BtnAssetDetails" Content="{DynamicResource {x:Static local:MainWindow.ResBtnAssetDetails}}" Style="{StaticResource ModernButtonStyle}" Padding="10,4" Margin="4,0" Click="BtnToggleDetails_Click"/>
                         <Button x:Name="BtnExpirySummaryBanner" Content="{DynamicResource {x:Static local:MainWindow.ResBtnExpiryBanner}}" Style="{StaticResource ModernButtonStyle}" Background="#FFFBE6" Foreground="#B06000" Padding="10,4" Margin="4,0" Visibility="Collapsed" Click="BtnExpirySummaryBanner_Click"/>
                     </StackPanel>
                 </Grid>
@@ -525,6 +526,25 @@
                                 <UniformGrid Columns="2" Margin="0,0,0,8">
                                     <TextBox x:Name="TxtWidth" Text="1920" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,4,0"/>
                                     <TextBox x:Name="TxtHeight" Text="1080" Style="{StaticResource ModernTextBoxStyle}" Margin="4,0,0,0"/>
+                                </UniformGrid>
+                                <UniformGrid Columns="3" Margin="0,0,0,6">
+                                    <Button Content="{DynamicResource {x:Static local:MainWindow.ResBtnScreen14}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Click="BtnScreen14_Click"/>
+                                    <Button Content="{DynamicResource {x:Static local:MainWindow.ResBtnScreen16}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Click="BtnScreen16_Click"/>
+                                    <Button Content="{DynamicResource {x:Static local:MainWindow.ResBtnScreen19}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Click="BtnScreen19_Click"/>
+                                </UniformGrid>
+                                <UniformGrid Columns="2" Margin="0,0,0,12">
+                                    <Button Content="{DynamicResource {x:Static local:MainWindow.ResBtnSplitH}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Click="BtnSplitH_Click"/>
+                                    <Button Content="{DynamicResource {x:Static local:MainWindow.ResBtnSplitV}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Click="BtnSplitV_Click"/>
+                                </UniformGrid>
+                                <Button Content="{DynamicResource {x:Static local:MainWindow.ResBtnResetResolution}}" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Stretch" Margin="0,0,0,16" Click="BtnResetResolution_Click"/>
+                            </StackPanel>
+
+                            <!-- SSH 独立窗口模式的初始窗口尺寸（仅 SSH 资产显示），控件与 RDP 分辨率一致 -->
+                            <StackPanel x:Name="PanelSshWindowSize" Visibility="Collapsed">
+                                <TextBlock Text="{DynamicResource {x:Static local:MainWindow.ResSettingSshWindowSize}}" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource AppForeground}"/>
+                                <UniformGrid Columns="2" Margin="0,0,0,8">
+                                    <TextBox x:Name="TxtSshWidth" Text="1000" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,4,0"/>
+                                    <TextBox x:Name="TxtSshHeight" Text="640" Style="{StaticResource ModernTextBoxStyle}" Margin="4,0,0,0"/>
                                 </UniformGrid>
                                 <UniformGrid Columns="3" Margin="0,0,0,6">
                                     <Button Content="{DynamicResource {x:Static local:MainWindow.ResBtnScreen14}}" Style="{StaticResource ModernButtonStyle}" Margin="2" Click="BtnScreen14_Click"/>
